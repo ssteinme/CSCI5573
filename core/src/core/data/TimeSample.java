@@ -8,19 +8,43 @@ package core.data;
  */
 public class TimeSample {
 
+  // <editor-fold desc="Enums">
+  public enum eSource {
+    /**
+     * This sample came from a thread.
+     */
+    Thread,
+    /**
+     * This sample came from a CPU core.
+     */
+    Core,
+    }
+  // </editor-fold>
+  
   // <editor-fold desc="Private Members">
   private long myStart;
   private float myDur;
+  private eSource mySource;
   // </editor-fold>
   
   // <editor-fold desc="Constructors">
+  
+  /**
+   * Copy constructor.
+   */
+  public TimeSample(TimeSample other) {
+    myDur = other.myDur;
+    mySource = other.mySource;
+    myStart = other.myStart;
+    } 
   
   /**
    * Create a sample.
    * @param start Starting time of the sample (in nanoseconds since epoch)
    * @param dur The duration of the sample (in nanoseconds).
    */
-  public TimeSample(long start, float dur) {
+  public TimeSample(eSource source, long start, float dur) {
+    mySource = source;
     myDur = dur;
     myStart = start;
     }
@@ -28,11 +52,21 @@ public class TimeSample {
   // </editor-fold>
   
   // <editor-fold desc="Public Access">
+  /**
+   * Get the source of this sample.
+   */
+  public eSource getSource() { return mySource; }
+  
+  /**
+   * Set the source of this time sample.
+   */
+  public void setSource(eSource s) { mySource = s; }
   
   /**
    * Set the starting time of the measurement (in nanoseconds).
    */
   public void setStart(long v) { myStart = v; }
+  
   /**
    * Get the starting time of the measurement (in nanoseconds).
    */

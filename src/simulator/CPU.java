@@ -52,7 +52,7 @@ public class CPU extends java.lang.Thread {
 		DataCollector.getInstance().CPUidle(this);
 		Thread preemptedThread = currentThread_;
 		currentThread_ = null;		
-		this.scheduler_.cpuIdle();
+		this.scheduler_.cpuIdle(this);
 		//System.out.println("Preempted thread: " + preemptedThread.toString());
 		return preemptedThread;
 	}
@@ -67,7 +67,9 @@ public class CPU extends java.lang.Thread {
 					burstTime_ += 1;
 					if (burstTime_ == this.quantum_) {
 						Thread premptedThread = preempt();
-						scheduler_.submit(premptedThread);					
+						if (premptedThread != null) {
+						    scheduler_.setToReady(premptedThread);	
+						}
 					}
 				}
 			} catch (InterruptedException e) {

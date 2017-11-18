@@ -13,11 +13,12 @@ import simulator.Thread;
 
 public abstract class ThreadScheduler extends java.lang.Thread {
 	protected int quantum_ = 1;
-	protected Queue<Thread> threads_ = new LinkedList<Thread>();
-	protected Collection<CPU> CPUs_ = new Vector<CPU>();
+	protected Queue<Thread> readyQueue = new LinkedList<Thread>();
+	protected Queue<Thread> runningQueue = new LinkedList<Thread>();
+	protected Vector<CPU> CPUs_ = new Vector<CPU>();
 	
-	private Lock threadsLock = new ReentrantLock();
-	private Condition threadReady = threadsLock.newCondition();     
+	private Lock readyQueueLock = new ReentrantLock();
+	private Condition threadReady = readyQueueLock.newCondition();     
 
 	private Lock cpusLock = new ReentrantLock();
 	private Condition cpuIdle = cpusLock.newCondition();     
@@ -25,61 +26,64 @@ public abstract class ThreadScheduler extends java.lang.Thread {
 	
 	public ThreadScheduler() {
 	}
-	public void setCPUs(Collection<CPU> aCPUs) {
+	public void setCPUs(Vector<CPU> aCPUs) {
 		CPUs_ = aCPUs;
 	}
-	public void submit(Thread thread) {
-		threadsLock.lock();
+	public void setToReady(Thread thread) {
+		if (thread == null) {
+			return;
+		}
+		readyQueueLock.lock();
 		try {
-			threads_.add(thread);
+			readyQueue.add(thread);
 			threadReady.signal();
 		} finally {
-			threadsLock.unlock();
+			readyQueueLock.unlock();
 		}
 	}
 	
-	public void cpuIdle() {
+	public void cpuIdle(CPU cpu) {
 		cpusLock.lock();
 		try {
+			CPUs_.addElement(cpu);
 			cpuIdle.signal();
 		} finally {
 			cpusLock.unlock();
 		}
 	}
 	protected Thread getReadyThread() throws InterruptedException {
-		threadsLock.lock();
+		readyQueueLock.lock();
 		try {
-			while (threads_.isEmpty()) {
+			while (readyQueue.isEmpty()) {
 				threadReady.await();
 			}
-			return threads_.poll();
+			return readyQueue.poll();
 		} finally {
-			threadsLock.unlock();
+			readyQueueLock.unlock();
 		}
 	}
+	public void submit(Thread thread) {
+		setToReady(thread);
+	}
 	public void unsubmit(Thread thread) {
-		threadsLock.lock();
-		threads_.remove(thread);
+		readyQueueLock.lock();
 		if (thread.isExecuting()) {
 			thread.getCPU().preempt();			
+		} else {
+			readyQueue.remove(thread);
 		}
-		threadsLock.unlock();
+		readyQueueLock.unlock();
 	}
 	
 	protected CPU getIdleCPU() throws InterruptedException {
 		cpusLock.lock();
 		try {
 			CPU cpu = null;
-			do {
-				Iterator<CPU> iterator = CPUs_.iterator();
-		        while (iterator.hasNext()) {
-		        	cpu = iterator.next();
-		        	if (cpu.isIdle()) {
-		        		return cpu;
-		        	}
-		        }
-		        cpuIdle.await();
-			} while (true);
+			while (CPUs_.size() == 0) {
+			    cpuIdle.await();
+			}
+			cpu = CPUs_.remove(0);
+			return cpu;
 		} finally {
 			cpusLock.unlock();
 		}

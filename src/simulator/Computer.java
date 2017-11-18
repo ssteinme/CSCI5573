@@ -40,7 +40,7 @@ public class Computer extends java.lang.Thread {
 		if (processes_.size() < 10) {
 			Process p = new Process();
 			processes_.add(p);		
-			scheduler_.submit(p);
+			scheduler_.setToReady(p);
 			//System.out.println("Start application " + p.toString());
 		}
 	}
@@ -55,7 +55,7 @@ public class Computer extends java.lang.Thread {
 		Process p = processes_.get(idx);
 		scheduler_.unsubmit(p);
 		processes_.remove(p);
-		//System.out.println("Terminate application " + p.toString());
+		System.out.println(">>>>>>> Terminated application " + p.toString());
 	}
 	
 	public void run() {

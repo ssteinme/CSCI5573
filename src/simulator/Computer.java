@@ -37,17 +37,20 @@ public class Computer extends java.lang.Thread {
 	}
 
 	public synchronized void startApp() {
-		if (processes_.size() < 10) {
+		if (processes_.size() < Global.MAX_PROCESSES) {
 			Process p = new Process();
 			processes_.add(p);		
 			scheduler_.setToReady(p);
 			//System.out.println("Start application " + p.toString());
+		} else {
+		    System.out.println(">>>>>>>>>>>>> At maximum allowable number of processes: " + Global.MAX_PROCESSES);			
 		}
 	}
 	
 	public synchronized void terminateApp() {
 		// Randomly pick a process to terminate
 		if (processes_.size() == 0) {
+		    System.out.println(">>>>>>>>>>>>> No process to terminate");			
 			return;
 		}
 		Random rand = new Random(System.currentTimeMillis());					
@@ -55,7 +58,7 @@ public class Computer extends java.lang.Thread {
 		Process p = processes_.get(idx);
 		scheduler_.unsubmit(p);
 		processes_.remove(p);
-		System.out.println(">>>>>>> Terminated application " + p.toString());
+		System.out.println("--------- Terminated application " + p.toString());
 	}
 	
 	public void run() {

@@ -33,11 +33,11 @@ public class EventSimulator extends java.lang.Thread {
 	public void run() {
 		System.out.println(getName() + " started.");
 		List<Event> asList = new ArrayList<Event>(eventSet);
+		Random rand = new Random(System.currentTimeMillis());	
+		int noActivityPeriod = 0;
 		while (true) {
-			// Sleep until the next random event
-			Random rand = new Random(System.currentTimeMillis());					
-    		int noActivityPeriod = rand.nextInt(10) + 1;   //in seconds
 			try {
+				// Sleep until the next random event
 				java.lang.Thread.sleep(noActivityPeriod*1000);   // in milliseconds
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -47,7 +47,7 @@ public class EventSimulator extends java.lang.Thread {
 			Event event = asList.get(0);
 			// Add the generated event to eventQueue	
 			eventQueue.add(event);
+    		noActivityPeriod = rand.nextInt(Global.MAX_NO_ACTIVITY_PERIOD) + 1;   //in seconds
 		}
 	}
-
 }

@@ -25,6 +25,7 @@ public class TimeSample {
   private long myStart;
   private float myDur;
   private eSource mySource;
+  private int myCID;
   // </editor-fold>
   
   // <editor-fold desc="Constructors">
@@ -33,6 +34,7 @@ public class TimeSample {
    * Copy constructor.
    */
   public TimeSample(TimeSample other) {
+    myCID = other.myCID;
     myDur = other.myDur;
     mySource = other.mySource;
     myStart = other.myStart;
@@ -42,8 +44,9 @@ public class TimeSample {
    * Create a sample.
    * @param start Starting time of the sample (in nanoseconds since epoch)
    * @param dur The duration of the sample (in nanoseconds).
+   * @param tid  The thread or core ID that this sample came from.
    */
-  public TimeSample(eSource source, long start, float dur) {
+  public TimeSample(eSource source, long start, float dur, int tid) {
     mySource = source;
     myDur = dur;
     myStart = start;
@@ -82,6 +85,15 @@ public class TimeSample {
    */
   public float getDuration() { return myDur ; }
   
+  /**
+   * Identifies which thread or CORE this came from.
+   */
+  public int getTID() { return myCID; }
+  
+  /**
+   * Set which thread or CORE this came from.
+   */
+  public void setTID(int id){ myCID = id; }
   // </editor-fold>
 
   }

@@ -13,8 +13,6 @@ public abstract class NumberTheory {
   
   // <editor-fold desc="Congruence">
   
-    
-  
   /// <summary>
   /// Find the inverse of the given value (mod m).
   /// 
@@ -58,7 +56,7 @@ public abstract class NumberTheory {
   /// <param name="m">The set of moduli each corresponding to its associated remainder in remainders</param>
   /// <param name="c">The remainders for each linear congruence</param>
   /// <returns>The value of x</returns>
-  public static long CRT(long[] c, long[] m) {
+  public static long CRT(int[] c, int[] m) {
     long X = 0;
     long M = 1;
     for(int i=0;i<m.length;i++) M *= m[i];
@@ -66,11 +64,7 @@ public abstract class NumberTheory {
     return X % M;
     }
 // </editor-fold>
-    
-  // <editor-fold desc="Utility">
   
-  // </editor-fold>
-    
   public static void main(String[] args) {
     
     }

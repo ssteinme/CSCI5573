@@ -243,7 +243,7 @@ public class ScheduleSampler {
    */
   class Marker extends TimeSample {
     private boolean myInUse = false;
-    public Marker() { super(eSource.Core,0,0); }
+    public Marker() { super(eSource.Core,0,0,-1); }
     public boolean isInUse() { return myInUse; }
     public void setInUse(boolean v) { myInUse = v; }
     }

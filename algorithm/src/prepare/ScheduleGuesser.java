@@ -2,6 +2,8 @@ package prepare;
 
 import core.data.Schedule;
 import core.data.TimeSample;
+import core.math.NumberTheory;
+import core.math.Primes;
 import tuning.SystemTuning;
 
 /**
@@ -29,8 +31,35 @@ public class ScheduleGuesser implements SampleListener {
    * This is the method that generates a schedule.
    */
   private void makeSchedule() {
+    TimeSample[] samples = ScheduleSampler.instance().getSamples();
+    float NORM = SystemTuning.NORMALIZATION_RANGE;
     
+    int[] remain =  new int[samples.length];
+    int[] primes = new int[samples.length];
+    for(int i=0;i<samples.length;i++) {
+      primes[i] = (int)(samples[i].getDuration()*NORM);
+      remain[i] = primes[i];
+      }
+    
+    // Move everything to closest prime number.
+    Primes.makeClosestPrime(primes);
+    int x = (int)NumberTheory.CRT(remain,primes);
+    int smallest = 0;
+    
+    // Compute the new time slot for each process.
+    for(int i=0;i<samples.length;i++) {
+      int s = x*primes[i];
+      samples[i].setStart(s);
+      if(s < smallest)
+        smallest = s;
+      }
+    
+    // Normalize them to start at zero.
+    for(int i=0;i<samples.length;i++) samples[i].setStart(samples[i].getStart()-smallest);
+    
+    mySchedule = new Schedule(samples);
     }
+  
   // </editor-fold>
   
   // <editor-fold desc="Private Constructors">

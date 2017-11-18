@@ -14,6 +14,12 @@ package tuning;
 public class SystemTuning {
   
   /**
+   * Every time duration is multiplied and divided by this value to
+   * convert it to an integer range value for CRT prime search.
+   */
+  public static final int NORMALIZATION_RANGE = 1000;
+    
+  /**
    * This is the number of time saples to take before
    * we create a new schedule and apply it.
    */

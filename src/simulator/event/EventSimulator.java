@@ -14,16 +14,12 @@ public class EventSimulator extends java.lang.Thread {
 		// We do quick, easy code here:  add 8 StartApp events and 2 TerminateApp event to make 
 		// a rate of 20% terminate app event.
 		eventSet = new HashSet<Event>();
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new StartApp());
-		eventSet.add(new TerminateApp());
-		eventSet.add(new TerminateApp());
+		for (int i = 0; i < Global.PROCESS_START_RATIO; ++i) {
+    		eventSet.add(new StartApp());
+		}
+		for (int i = 0; i < Global.PROCESS_TERMINATION_RATIO; ++i) {
+			eventSet.add(new TerminateApp());
+		}
 	}
 	
 	public EventSimulator() {

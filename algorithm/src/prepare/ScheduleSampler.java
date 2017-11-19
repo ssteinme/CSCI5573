@@ -185,7 +185,6 @@ public class ScheduleSampler {
         }
       return samps.toArray(new TimeSample[samps.size()]);
       }
-    
     }
   
   // </editor-fold>

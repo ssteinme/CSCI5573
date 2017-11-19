@@ -35,7 +35,9 @@ public class ScheduleGuesser implements SampleListener {
    * This is the method that generates a schedule.
    */
   private void makeSchedule() {
-    PerformanceTiming.CRT_GUESS_TIME = System.nanoTime();
+    long st = System.currentTimeMillis();
+    long et = 0;
+    PerformanceTiming.CRT_GUESS_TIME = st;
     TimeSample[] samples = ScheduleSampler.instance().getSamples();
     
     long[] remain =  new long[samples.length];
@@ -56,8 +58,9 @@ public class ScheduleGuesser implements SampleListener {
       samples[i].setStart(s);
       }
     
+    et = System.currentTimeMillis();
     mySchedule = new Schedule(samples);
-    PerformanceTiming.CRT_GUESS_TIME = (System.nanoTime() - PerformanceTiming.CRT_GUESS_TIME)*Conversions.NS_TO_MS;
+    PerformanceTiming.CRT_GUESS_TIME = et - st;
     }
   
   // </editor-fold>
@@ -116,18 +119,23 @@ public class ScheduleGuesser implements SampleListener {
   public static void testScheduleGuess() {
     
     try {
+      double gt = 0;
       
-      for(int i=0;i<100;i++) {
-        int t = ScheduleSampler.instance().mark(TimeSample.eSource.Core);
-        int r = (int)(Math.random()*200);
-        Thread.sleep(r);
-        ScheduleSampler.instance().expire(t);
+      for(int k=0;k<5;k++) {
+        
+        for(int i=0;i<25;i++) {
+          int t = ScheduleSampler.instance().mark(TimeSample.eSource.Core);
+          int r = (int)(Math.random()*200);
+          Thread.sleep(r);
+          ScheduleSampler.instance().expire(t);
+          }
+      
+        Schedule sch = ScheduleGuesser.instance().getSchedule();
+        gt += PerformanceTiming.CRT_GUESS_TIME;
         }
       
-      Schedule sch = ScheduleGuesser.instance().getSchedule();
-      System.out.println(sch.toCSVString());
-      
-      new JFile("C:\\Users\\Shannon\\Desktop\\test.csv").setText(sch.toCSVString());
+      System.out.println("Ave: " + (gt/5) + "ms");
+      //new JFile("C:\\Users\\Shannon\\Desktop\\test.csv").setText(sch.toCSVString());
       }
     catch (Exception ex) {
       Log.error(ex);

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package io;
+package core.io;
 
 /**
  * This is a very simple logging utility.
@@ -12,16 +12,20 @@ package io;
 public class Log {
   
   public static void error(Exception ex) {
-    
+    System.out.println(ex.getMessage());
+    ex.printStackTrace();
     }
   
   public static void error(String msg) { 
+    System.out.println("ERROR: " + msg);
     }
   
   public static void warn(String msg) { 
+    System.out.println("WARNING: " + msg);
     }
   
   public static void info(String msg) { 
+    System.out.println("INFO: " + msg);
     }
   
   }

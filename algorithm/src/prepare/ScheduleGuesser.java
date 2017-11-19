@@ -2,8 +2,12 @@ package prepare;
 
 import core.data.Schedule;
 import core.data.TimeSample;
+import core.io.JFile;
 import core.math.NumberTheory;
 import core.math.Primes;
+import core.io.Log;
+import core.math.Conversions;
+import tuning.PerformanceTiming;
 import tuning.SystemTuning;
 
 /**
@@ -31,33 +35,29 @@ public class ScheduleGuesser implements SampleListener {
    * This is the method that generates a schedule.
    */
   private void makeSchedule() {
+    PerformanceTiming.CRT_GUESS_TIME = System.nanoTime();
     TimeSample[] samples = ScheduleSampler.instance().getSamples();
-    float NORM = SystemTuning.NORMALIZATION_RANGE;
     
-    int[] remain =  new int[samples.length];
-    int[] primes = new int[samples.length];
+    long[] remain =  new long[samples.length];
+    long[] primes = new long[samples.length];
     for(int i=0;i<samples.length;i++) {
-      primes[i] = (int)(samples[i].getDuration()*NORM);
+      primes[i] = (long)samples[i].getDuration();
+      if(primes[i] == 0) primes[i] = 1;
       remain[i] = primes[i];
       }
     
     // Move everything to closest prime number.
     Primes.makeClosestPrime(primes);
-    int x = (int)NumberTheory.CRT(remain,primes);
-    int smallest = 0;
+    long x = NumberTheory.CRT(remain,primes);
     
     // Compute the new time slot for each process.
     for(int i=0;i<samples.length;i++) {
-      int s = x*primes[i];
+      long s = Math.abs((x*primes[i]) % remain[i]);
       samples[i].setStart(s);
-      if(s < smallest)
-        smallest = s;
       }
     
-    // Normalize them to start at zero.
-    for(int i=0;i<samples.length;i++) samples[i].setStart(samples[i].getStart()-smallest);
-    
     mySchedule = new Schedule(samples);
+    PerformanceTiming.CRT_GUESS_TIME = (System.nanoTime() - PerformanceTiming.CRT_GUESS_TIME)*Conversions.NS_TO_MS;
     }
   
   // </editor-fold>
@@ -80,7 +80,6 @@ public class ScheduleGuesser implements SampleListener {
       makeSchedule();
       myCount = 0;
       }
-    
     }
   
   // </editor-fold>
@@ -110,4 +109,34 @@ public class ScheduleGuesser implements SampleListener {
       }
     }
   // </editor-fold>
+  
+  /**
+   * Testing method that tests the behavior of making a first schedule guess.
+   */
+  public static void testScheduleGuess() {
+    
+    try {
+      
+      for(int i=0;i<100;i++) {
+        int t = ScheduleSampler.instance().mark(TimeSample.eSource.Core);
+        int r = (int)(Math.random()*200);
+        Thread.sleep(r);
+        ScheduleSampler.instance().expire(t);
+        }
+      
+      Schedule sch = ScheduleGuesser.instance().getSchedule();
+      System.out.println(sch.toCSVString());
+      
+      new JFile("C:\\Users\\Shannon\\Desktop\\test.csv").setText(sch.toCSVString());
+      }
+    catch (Exception ex) {
+      Log.error(ex);
+      }
+    
+    }
+  
+    public static void main(String[] args) {
+      testScheduleGuess();
+      }
+  
   }

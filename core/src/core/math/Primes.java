@@ -5,7 +5,7 @@
  */
 package core.math;
 
-import io.Log;
+import core.io.Log;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -102,15 +102,19 @@ public abstract class Primes {
   // </editor-fold>
   
   // <editor-fold desc="Utility Functions">
+
+  /**
+   * Change all values to be the closest prime number.
+   */
+  public static void makeClosestPrime(long[] values) {
+    for(int i=0;i<values.length;i++) values[i] = closest(values[i]);
+    }
   
   /**
    * Change all values to be the closest prime number.
    */
   public static void makeClosestPrime(int[] values) {
-    // Brute Force For Now.
-    for(int i=0;i<values.length;i++) {
-      
-      }
+    for(int i=0;i<values.length;i++) values[i] = (int)closest(values[i]);
     }
   
   /**
@@ -118,7 +122,8 @@ public abstract class Primes {
    */
   public static long closest(long p) {
     if(p < 0) throw new IllegalArgumentException("Prime numbers must be positive.");
-    if(isPrime(p)) return p;
+    if(p == 0) return 1;
+    else if(isPrime(p)) return p;
     
     long orgp = p;
     

@@ -42,8 +42,8 @@ public class TimeSample {
   
   /**
    * Create a sample.
-   * @param start Starting time of the sample (in nanoseconds since epoch)
-   * @param dur The duration of the sample (in nanoseconds).
+   * @param start Starting time of the sample (in milliseconds since epoch)
+   * @param dur The duration of the sample (in milliseconds).
    * @param tid  The thread or core ID that this sample came from.
    */
   public TimeSample(eSource source, long start, float dur, int tid) {
@@ -66,22 +66,22 @@ public class TimeSample {
   public void setSource(eSource s) { mySource = s; }
   
   /**
-   * Set the starting time of the measurement (in nanoseconds).
+   * Set the starting time of the measurement (in milliseconds).
    */
   public void setStart(long v) { myStart = v; }
   
   /**
-   * Get the starting time of the measurement (in nanoseconds).
+   * Get the starting time of the measurement (in milliseconds).
    */
   public long getStart() { return myStart; }
   
   /**
-   * Set the duration of the measurement (in nanoseconds).
+   * Set the duration of the measurement (in milliseconds).
    */
   public void setDuration(float v) { myDur = v; }
   
   /**
-   * Get the duration of the measurement (in nanoseconds).
+   * Get the duration of the measurement (in milliseconds).
    */
   public float getDuration() { return myDur ; }
   
@@ -96,5 +96,9 @@ public class TimeSample {
   public void setTID(int id){ myCID = id; }
   // </editor-fold>
 
+  @Override
+  public String toString() {
+    return "ID: " + getTID() + " T: " + getStart() + " D:" + getDuration() + " ns";
+    }
   }
 

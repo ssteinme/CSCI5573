@@ -4,12 +4,12 @@ import core.data.TimeSample;
 import core.data.TimeSample.eSource;
 import core.math.Conversions;
 import core.math.ExtraMath;
-import io.Log;
+import core.io.Log;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Map;
 import tuning.SystemTuning;
 
 /**
@@ -41,10 +41,10 @@ public class ScheduleSampler {
   
   // This is a moving list.
   private Object myMutex = new Object();
-  
+    
   // Every element of this array will ALWAYS be non-null
   // Elements should only be ignored if the start time is zero.
-  private Marker[] myMarkers = new Marker[SystemTuning.MAX_MARKER_COUNT];
+  private Marker[] myMarkers = new Marker[SystemTuning.MAX_THREADS];
   private int myNextM = -1;
   
   // CPU average.
@@ -53,6 +53,14 @@ public class ScheduleSampler {
   // Thread average.
   private float myThreadA = 0;
   private int myThreadN = 0;
+    
+  private long myEpoch = System.currentTimeMillis();
+  
+//  // The time of the very first item sampled
+//  // is placed into this value.
+//  // all subsequent schedule times are relative to this.
+//  // This keeps the values small.
+//  private long myEpoch = 0;
   
   private List<SampleListener> myListeners = new ArrayList<>();
   
@@ -80,6 +88,7 @@ public class ScheduleSampler {
   public int mark(eSource source) {
     
     synchronized(myMutex) {
+      long time = System.currentTimeMillis();
       myNextM = (myNextM + 1) % myMarkers.length;
       Marker ts = myMarkers[myNextM];
       
@@ -88,11 +97,11 @@ public class ScheduleSampler {
       // The user gets -1 which is a NOOP.
       if(ts.isInUse()) return -1;
       
-      // Internally we store milliseconds until the sample is done.
+      ts.setTID(myNextM);
       ts.setInUse(true);
       ts.setSource(source);
-      ts.setStart(Instant.EPOCH.toEpochMilli());
-      ts.setDuration(0);
+      ts.setStart(time - myEpoch);
+      ts.setDuration(System.nanoTime());
       
       return myNextM;
       }
@@ -103,22 +112,20 @@ public class ScheduleSampler {
    * @param t The marker ID received from a call to {@link #mark()}.
    */
   public void expire(int t) {
-    
-    if(t == -1)
-      return;
-    
-    long end = Instant.EPOCH.toEpochMilli();
     Marker ts;
     TimeSample msg = null;
     
     synchronized(myMarkers) {
+      
+      if(t == -1)
+        return;
+      
       ts = myMarkers[t];
-      ts.setDuration((float)((ts.getStart() - end)*Conversions.MS_TO_NS));
-      ts.setStart((long)(ts.getStart()*Conversions.MS_TO_NS));
+      ts.setDuration((float)(Math.abs(System.nanoTime() - ts.getDuration())*Conversions.NS_TO_MS));
       msg = new TimeSample(ts);
       ts.setInUse(false);
       }
-        
+    
     fireSampleAdded(msg);
     }
     
@@ -236,7 +243,7 @@ public class ScheduleSampler {
   // </editor-fold>
   
   // <editor-fold desc="Internal Class">
-  
+   
   /**
    * This is an internal class used to keep track of 
    * some additional information about a TimeSample.

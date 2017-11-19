@@ -29,6 +29,6 @@ public class SystemTuning {
    * This is the maximum number of simultaneous timing samples
    * that can be taking place without dropping one.
    */
-  public static final int MAX_MARKER_COUNT = 100;
+  public static final int MAX_THREADS = 25;
   
   }

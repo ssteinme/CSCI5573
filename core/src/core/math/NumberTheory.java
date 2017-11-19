@@ -37,8 +37,9 @@ public abstract class NumberTheory {
     if(t > Integer.MAX_VALUE)
       throw new IllegalArgumentException("The specified values (" + x + "," + m + ") inverse are out of supported range!");
     else
-      throw new IllegalArgumentException("The specified values (" + x + "," + m + ") are not relatively prime, or are too large.");
+      throw new IllegalArgumentException("The specified values (" + x + "," + m + ") are not relatively prime.");
     }
+  
   
   /// <summary>
   /// Compute the Chinese Remainder Theorem.
@@ -56,7 +57,7 @@ public abstract class NumberTheory {
   /// <param name="m">The set of moduli each corresponding to its associated remainder in remainders</param>
   /// <param name="c">The remainders for each linear congruence</param>
   /// <returns>The value of x</returns>
-  public static long CRT(int[] c, int[] m) {
+  public static long CRT(long[] c, long[] m) {
     long X = 0;
     long M = 1;
     for(int i=0;i<m.length;i++) M *= m[i];

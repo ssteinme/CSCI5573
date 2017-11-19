@@ -1,4 +1,4 @@
-package prepare;
+package algorithm.prepare;
 
 import core.data.TimeSample;
 import core.data.TimeSample.eSource;
@@ -10,7 +10,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
-import tuning.SystemTuning;
+
+import algorithm.tuning.SystemTuning;
 
 /**
  * This class provides the utility that watches the processing

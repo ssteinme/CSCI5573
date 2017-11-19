@@ -1,4 +1,4 @@
-package tuning;
+package algorithm.tuning;
 
 /**
  * This class provides a holding location for all performance

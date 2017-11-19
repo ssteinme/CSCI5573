@@ -1,5 +1,7 @@
-package prepare;
+package algorithm.prepare;
 
+import algorithm.tuning.PerformanceTiming;
+import algorithm.tuning.SystemTuning;
 import core.data.Schedule;
 import core.data.TimeSample;
 import core.io.JFile;
@@ -7,8 +9,6 @@ import core.math.NumberTheory;
 import core.math.Primes;
 import core.io.Log;
 import core.math.Conversions;
-import tuning.PerformanceTiming;
-import tuning.SystemTuning;
 
 /**
  * This class is a utility that attempts to guess a good schedule.

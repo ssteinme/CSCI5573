@@ -5,6 +5,11 @@
  */
 package core.math;
 
+import core.io.Log;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
@@ -16,7 +21,8 @@ import java.util.Hashtable;
  */
 public abstract class Primes {
   private static Dictionary<Long,Long> ourPM = null;
-    
+  private static Dictionary<Long,Integer> ourPMIndex = null;
+  
   // <editor-fold desc="Prime Cache">
   public static final long[] PRIMES = {
   1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,
@@ -94,9 +100,61 @@ public abstract class Primes {
   30983,31013,31019,31033,31039,31051,31063,31069,31079,31081,31091,31121,31123,31139,31147,31151,31153,31159,31177,31181,31183,31189,31193,31219,31223,31231,31237,31247,31249,31253,31259,31267,31271,31277,31307,31319,31321,31327,31333,31337,31357,31379,31387,
   31391,31393,31397,31469,31477,31481,31489,31511,31513,31517};
   // </editor-fold>
-
+  
   // <editor-fold desc="Utility Functions">
 
+  /**
+   * Change all values to be the closest prime number.
+   */
+  public static void makeClosestPrime(long[] values) {
+    for(int i=0;i<values.length;i++) values[i] = closest(values[i]);
+    }
+  
+  /**
+   * Change all values to be the closest prime number.
+   */
+  public static void makeClosestPrime(int[] values) {
+    for(int i=0;i<values.length;i++) values[i] = (int)closest(values[i]);
+    }
+  
+  /**
+   * Return the closest prime number to the given value.
+   */
+  public static long closest(long p) {
+    if(p < 0) throw new IllegalArgumentException("Prime numbers must be positive.");
+    if(p == 0) return 1;
+    else if(isPrime(p)) return p;
+    
+    long orgp = p;
+    
+    // Find the closest prime less than the value.
+    for( ;p>=0;p--) {
+      
+      if(isPrime(p)) {
+        long nextPrime = 0;
+        
+        // Get the index into the prime list for this prime.
+        int idx = ourPMIndex.get(p) + 1;
+        
+        if(idx < PRIMES.length)
+          nextPrime = PRIMES[idx];
+        // Brute force.
+        else {
+          nextPrime = PRIMES[PRIMES.length-1];
+          for( ;nextPrime < Long.MAX_VALUE;nextPrime++) {
+            if(isPrime(nextPrime))
+              break;
+            }
+          }
+        
+        p = (orgp - p < nextPrime - orgp)?p:nextPrime;
+        break;
+        }
+      }
+    
+    return p;
+    }
+  
   /**
    * Ask if the given value is prime.
    */
@@ -105,9 +163,13 @@ public abstract class Primes {
     if(v == 1) return true;
     
     if(ourPM == null) {
+      ourPMIndex = new Hashtable<Long, Integer>();
       ourPM = new Hashtable<>();
-      for(int i=0;i<PRIMES.length;i++) 
-        ourPM.put(new Long(PRIMES[i]),new Long(PRIMES[i]));
+      
+      for(int i=0;i<PRIMES.length;i++) {
+        ourPM.put(PRIMES[i],PRIMES[i]);
+        ourPMIndex.put(PRIMES[i],i);
+        }
       }
     
     // Quick check.
@@ -130,4 +192,17 @@ public abstract class Primes {
     }
   // </editor-fold>
 
+  public static void main(String[] args) {
+    
+    try {
+      PrintWriter pw = new PrintWriter(new FileWriter(new File("C:\\Workspace\\BiasSched\\core\\src\\core\\math\\primes.dat")));
+      pw.close();
+      } 
+    catch (Exception ex) {
+      Log.error(ex);
+      }
+      
+    
+    }
+  
   }

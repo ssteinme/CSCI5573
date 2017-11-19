@@ -11,6 +11,8 @@ package core.math;
  */
 public abstract class NumberTheory {
   
+  // <editor-fold desc="Congruence">
+  
   /// <summary>
   /// Find the inverse of the given value (mod m).
   /// 
@@ -22,21 +24,22 @@ public abstract class NumberTheory {
   /// <returns>The inverse of val (mod m)</returns>
   public static long inverse(long x, long m) {
     
-    // Fermat's theorem.
+    // Fermat's little theorem.
     if(Primes.isPrime(m) && x != m)
-      return (long)Math.pow(x,m-2);
+      return (long)Math.pow(x%m,m-2) % m;
     
     long t = 1;
     for(;t<=m;t++) {
       if(((x*t) % m) == 1)
-        return t;
+        return t % m;
       }
     
     if(t > Integer.MAX_VALUE)
       throw new IllegalArgumentException("The specified values (" + x + "," + m + ") inverse are out of supported range!");
     else
-      throw new IllegalArgumentException("The specified values (" + x + "," + m + ") are not relatively prime, or are too large.");
+      throw new IllegalArgumentException("The specified values (" + x + "," + m + ") are not relatively prime.");
     }
+  
   
   /// <summary>
   /// Compute the Chinese Remainder Theorem.
@@ -61,12 +64,9 @@ public abstract class NumberTheory {
     for(int i=0;i<c.length;i++) X += (c[i]*inverse(M/m[i],m[i])*(M/m[i])) % M;
     return X % M;
     }
+// </editor-fold>
   
   public static void main(String[] args) {
     
-    for(int i=0;i<Primes.PRIMES.length;i++) {
-      if(!Primes.isPrime(Primes.PRIMES[i]))
-        System.out.println("Failed!");
-      }
     }
   }

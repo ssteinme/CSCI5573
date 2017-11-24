@@ -14,7 +14,7 @@ public class RoundRobinScheduler extends ThreadScheduler {
 			CPU idleCPU = null;
 			Thread thread = null;
 			try {
-				idleCPU = getIdleCPU();			
+				idleCPU = getIdleCPU();
 				thread = getReadyThread();
 				idleCPU.run(thread);
 			} catch (InterruptedException e) {

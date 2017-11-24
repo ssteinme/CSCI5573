@@ -46,7 +46,7 @@ public class ScheduleSampler {
   // Every element of this array will ALWAYS be non-null
   // Elements should only be ignored if the start time is zero.
   private Marker[] myMarkers = new Marker[SystemTuning.MAX_THREADS];
-  private int myNextM = -1;
+  private int myNextIndex = -1;
   
   // CPU average.
   private float myCPUA = 0;
@@ -69,6 +69,9 @@ public class ScheduleSampler {
   
   // <editor-fold desc="Private Constructors">
   
+  /**
+   * Singleton constructor.
+   */
   private ScheduleSampler() {
     for(int i=0;i<myMarkers.length;i++) myMarkers[i] = new Marker();
     }
@@ -82,29 +85,30 @@ public class ScheduleSampler {
    * This is called at the start of processing or idle.
    * This works with the {@link #expire(long)} method.
    * 
+   * @param cid The unique ID for the thread/CPU.
    * @param source Who is starting this sample.
    * @return A value that acts like a key to be used when this
    * time sampling is done.
    */
-  public int mark(eSource source) {
+  public int mark(int cid, eSource source) {
     
     synchronized(myMutex) {
       long time = System.currentTimeMillis();
-      myNextM = (myNextM + 1) % myMarkers.length;
-      Marker ts = myMarkers[myNextM];
+      myNextIndex = (myNextIndex + 1) % myMarkers.length;
+      Marker ts = myMarkers[myNextIndex];
       
       // If this marker is alreay in use we are full and we 
       // do not take the time snapshot.
       // The user gets -1 which is a NOOP.
       if(ts.isInUse()) return -1;
       
-      ts.setTID(myNextM);
+      ts.setTID(cid);
       ts.setInUse(true);
       ts.setSource(source);
       ts.setStart(time - myEpoch);
       ts.setDuration(System.nanoTime());
       
-      return myNextM;
+      return myNextIndex;
       }
     }
   
@@ -175,18 +179,18 @@ public class ScheduleSampler {
   
   /**
    * Capture the current set of time samples.
+   * @param The type of samples to retrieve.
    */
-  public TimeSample[] getSamples() {
+  public TimeSample[] getSamples(eSource src) {
     
     synchronized(myMutex) {
       List<TimeSample> samps = new ArrayList<>();
       for(int i=0;i<myMarkers.length;i++) {
-        if(!myMarkers[i].isInUse() && myMarkers[i].getStart() != 0)
+        if(!myMarkers[i].isInUse() && myMarkers[i].getStart() != 0 && myMarkers[i].getSource() == src)
           samps.add(myMarkers[i]);
         }
       return samps.toArray(new TimeSample[samps.size()]);
       }
-    
     }
   
   // </editor-fold>

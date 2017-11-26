@@ -14,9 +14,9 @@ public class ExtraMath {
    * @param n The current count (sample count) of the given x.
    * @return The moving average value.
    */
-  public static double mave(double x, double prevAve, double n) {
+  public static double mave(double x, double prevAve, long n) {
     if(n == 0) throw new IllegalArgumentException("Remember this is a 1 based count!");
-    return ((prevAve*(n-1)) + x)/n;
+    return ((prevAve*( ((double)n)-1)) + x)/((double)n);
     }
   
   public static void main(String[] args) {

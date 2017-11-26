@@ -39,7 +39,7 @@ public class DataCollector {
    * Called when the CPU is idle.
    */
 	public void CPUidle(CPU aCPU) {
-    ScheduleSampler.instance().mark(aCPU.getID(), TimeSample.eSource.Core);
+    
     }
 	
   /**

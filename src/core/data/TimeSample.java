@@ -98,6 +98,6 @@ public class TimeSample {
 
   @Override
   public String toString() {
-    return "ID: " + getTID() + " T: " + getStart() + " D:" + getDuration() + " ns";
+    return "ID: " + getTID() + " S: " + getStart() + " D:" + getDuration() + " ns";
     }
   }

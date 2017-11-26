@@ -10,7 +10,7 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
-		int nCPUs = 1;
+		int nCPUs = 4;
 		if (args.length > 0) {
 	       nCPUs = Integer.parseInt(args[0]);
 		}

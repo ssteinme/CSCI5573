@@ -111,6 +111,25 @@ public abstract class ThreadScheduler extends java.lang.Thread {
 	}
 	
   /**
+   * Request the CPU of the specified ID/index.
+   */
+  protected CPU getCPU(int idx) {
+    cpusLock.lock();
+    
+		try {
+      while (CPUs_.size() == 0) cpuIdle.await();
+      return CPUs_.get(idx);
+      }
+    catch(Exception ex) { 
+      Log.error(ex); 
+      return null;
+      }
+    finally {
+			cpusLock.unlock();
+      }
+    }
+  
+  /**
    * Ask for the next available CPU that is not busy.
    */
 	protected CPU getIdleCPU() throws InterruptedException {

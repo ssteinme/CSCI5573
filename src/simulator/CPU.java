@@ -13,8 +13,7 @@ public class CPU extends java.lang.Thread {
 	private int quantum_ = 1;
 	private Process currentThread_;
 	
-  private int myLastIdleID = -1;
-	private int accumulatativeBurstTime_ = 0;
+  private int accumulatativeBurstTime_ = 0;
 	private int burstTime_ = 0;
 	private ThreadScheduler scheduler_;
   // </editor-fold>
@@ -22,7 +21,8 @@ public class CPU extends java.lang.Thread {
 	public CPU(int id) {
 		ID_ = id;
 		currentThread_ = null;
-	}
+    ScheduleSampler.instance().notify(id);
+  	}
   
   public String toString() {
     	String s = "";
@@ -36,17 +36,13 @@ public class CPU extends java.lang.Thread {
 	
   public synchronized boolean isIdle() {
 		return (currentThread_ == null);
-	}
+    }
 	
 	public int getID() {
 		return ID_;
 	}
   
 	public synchronized Process run(Process aThread) {
-    
-    // Idle time is over.  Time to process so mark the idle time.
-    ScheduleSampler.instance().expire(myLastIdleID);
-      
 		Process preemptedThread = preempt();
 		currentThread_ = null;
 		burstTime_ = 0;
@@ -61,11 +57,8 @@ public class CPU extends java.lang.Thread {
     if(aThread.isExecuting()) {
       int m = ScheduleSampler.instance().mark(aThread.getID(),TimeSample.eSource.Thread);
       aThread.getCode().executeNext();
-      ScheduleSampler.instance().expire(m);
+      ScheduleSampler.instance().expire(aThread.getID(), m);
       }
-    
-    // Ready the idle time until we get called again.
-    myLastIdleID =  ScheduleSampler.instance().mark(ID_, TimeSample.eSource.Core);
     
 		return preemptedThread;
     }
@@ -90,8 +83,12 @@ public class CPU extends java.lang.Thread {
    * This is the java.Thread that runs CPU instruction code.
    */
 	public void run() {
-		while (true) {
-			while (isIdle());
+		
+    while (true) {
+      
+      int id = ScheduleSampler.instance().mark(ID_, TimeSample.eSource.Core);
+			while (isIdle()) ScheduleSampler.instance().extend(ID_,id);
+      ScheduleSampler.instance().expire(ID_, id);
       
       synchronized(this) {  // TODO: synchronize this block
         burstTime_ += 1;

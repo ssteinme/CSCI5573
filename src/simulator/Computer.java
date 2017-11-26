@@ -102,10 +102,10 @@ public class Computer extends java.lang.Thread {
 		processes_.remove(p);
     p.terminate();
 		Log.info("Terminating application " + code.getName() + " PID: " + p.getID());
-	}
+    }
 	
 	public void run() {
-		System.out.println(getName() + " started.");
+		System.out.println(getName() + " started CPUs: " + CPUs_.size());
     
     long next = System.currentTimeMillis() + 1000;
     

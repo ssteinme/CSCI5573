@@ -18,7 +18,7 @@ public class Main {
 		Global._computers = new Vector<Computer>();
 		int nComputers = 1;
 		for (int id = 0; id < nComputers; ++id) {
-			Computer computer = new Computer(id, nCPUs);
+			Computer computer = new Computer(nCPUs);
 		    Global._computers.add(computer);
 			computer.start();
 			//java.lang.Thread.yield();

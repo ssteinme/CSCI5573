@@ -37,7 +37,7 @@ public class ScheduleSampler {
   private static Object ourMutex = new Object();
   private static ScheduleSampler ourInst = null;
   // </editor-fold>
-
+  
   // <editor-fold desc="Private">
   
   // This is a moving list.
@@ -49,10 +49,10 @@ public class ScheduleSampler {
   private int myNextIndex = -1;
   
   // CPU average.
-  private float myCPUA = 0;
+  private double myCPUA = 0;
   private int myCPUN = 0;
   // Thread average.
-  private float myThreadA = 0;
+  private double myThreadA = 0;
   private int myThreadN = 0;
     
   private long myEpoch = System.currentTimeMillis();
@@ -90,25 +90,29 @@ public class ScheduleSampler {
    * @return A value that acts like a key to be used when this
    * time sampling is done.
    */
-  public int mark(int cid, eSource source) {
+  public int mark(long cid, eSource source) {
     
     synchronized(myMutex) {
       long time = System.currentTimeMillis();
-      myNextIndex = (myNextIndex + 1) % myMarkers.length;
-      Marker ts = myMarkers[myNextIndex];
+      int i = 0;
+      Marker ts = null;
       
-      // If this marker is alreay in use we are full and we 
-      // do not take the time snapshot.
-      // The user gets -1 which is a NOOP.
-      if(ts.isInUse()) return -1;
+      for(i=0;i<myMarkers.length;i++)
+        if(!myMarkers[i].isInUse()) {
+          ts = myMarkers[i];
+          break;
+          }
       
-      ts.setTID(cid);
+      if(ts == null) 
+        return -1;
+      
       ts.setInUse(true);
+      ts.setTID(cid);
       ts.setSource(source);
       ts.setStart(time - myEpoch);
-      ts.setDuration(System.nanoTime());
+      ts.setDuration(time);
       
-      return myNextIndex;
+      return i;
       }
     }
   
@@ -117,17 +121,38 @@ public class ScheduleSampler {
    * @param t The marker ID received from a call to {@link #mark()}.
    */
   public void expire(int t) {
+    long time = System.currentTimeMillis();
     Marker ts;
     TimeSample msg = null;
     
-    synchronized(myMarkers) {
+    synchronized(myMutex) {
       
       if(t == -1)
         return;
       
       ts = myMarkers[t];
-      ts.setDuration((float)(Math.abs(System.nanoTime() - ts.getDuration())*Conversions.NS_TO_MS));
+      ts.setDuration(time - ts.getDuration());
       msg = new TimeSample(ts);
+      
+      // Reset moving average if we exceed counts.
+      if(myCPUN+1 >= Integer.MAX_VALUE) {
+        myCPUN = 0;
+        myThreadN = 0;
+        myCPUA = 0;
+        myThreadA = 0;
+        }
+      
+      switch(ts.getSource()) {
+        case Core:
+          myCPUN++;
+          myCPUA = ExtraMath.mave(ts.getDuration(),myCPUA,myCPUN);
+          break;
+        case Thread:
+          myThreadN++;
+          myThreadA = ExtraMath.mave(ts.getDuration(),myThreadA,myThreadN);
+          break;
+          }
+      
       ts.setInUse(false);
       }
     
@@ -136,44 +161,19 @@ public class ScheduleSampler {
     
   // </editor-fold>
   
-  // <editor-fold desc="Manually Add">
-    
-  /**
-   * Manually add a sample to the system from a CPU or a thread.
-   * 
-   * You should try to use the {@link #mark(core.data.TimeSample.eSource)} and {@link #expire(long)} methods 
-   * if possible.
-   */
-  public void add(TimeSample ts) {
-    synchronized(myMarkers) {
-      switch(ts.getSource()) {
-        case Core:
-          myCPUA += ExtraMath.mave(ts.getDuration(),myCPUA,myCPUN);
-          break;
-        case Thread:
-          myThreadA += ExtraMath.mave(ts.getDuration(),myThreadA,myThreadN);
-          break;
-        }
-      }
-    
-    fireSampleAdded(ts);
-    }
-  
-  // </editor-fold>
-  
   // <editor-fold desc="Properties">
   
   /**
-   * Get the average CPU time use.
+   * Get the average CPU idle time in milliseconds.
    */
-  public float getCPUUse() {
+  public double getCPUIdle() {
     return myCPUA;
     }
   
   /**
-   * Get the average thread idle time.
+   * Get the average thread use time in milliseconds.
    */
-  public float getThreadIdle() {
+  public double getThreadUse() {
     return myThreadA;
     }
   
@@ -261,4 +261,49 @@ public class ScheduleSampler {
     }
   
   // </editor-fold>
+  
+  // <editor-fold desc="Reporting">
+  
+  /**
+   * Returns a report string that shows all current metrics.
+   */
+  public String getReport() {
+    String msg = " CPU Ave Idle (ms): " + getCPUIdle() + " Thread Ave Use (ms): " + getThreadUse() + "\n";
+    return msg;
+    }
+  
+  @Override
+  public String toString() { return getReport(); }
+  
+  // </editor-fold>
+
+  public static void test() {
+    
+    try {
+      for(int i=0;i<10;i++) {
+        
+        int id = ScheduleSampler.instance().mark(i, eSource.Thread);
+        long nxt = (long)(System.currentTimeMillis() + Math.random()*100.0d);
+        while(System.currentTimeMillis() < nxt);
+        ScheduleSampler.instance().expire(id);
+        
+        id = ScheduleSampler.instance().mark(100 + i, eSource.Core);
+        nxt = (long)(System.currentTimeMillis() + Math.random()*100.0d);
+        while(System.currentTimeMillis() < nxt);
+        ScheduleSampler.instance().expire(id);
+        }
+
+      System.out.println(ScheduleSampler.instance(). getReport());
+      
+      } 
+    catch (Exception ex) {
+      Log.error(ex);
+      }
+    }
+  
+  public static void main(String[] args) {
+    test();
+    
+    }
+  
   }

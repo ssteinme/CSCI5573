@@ -7,14 +7,13 @@ package algorithm;
 
 import algorithm.prepare.SampleListener;
 import algorithm.prepare.ScheduleSampler;
+import algorithm.prepare.ThreadScheduler;
 import algorithm.tuning.PerformanceTiming;
 import core.data.Schedule;
 import core.data.TimeSample;
 import core.io.Log;
 import core.math.NumberTheory;
 import core.math.Primes;
-import java.util.Arrays;
-import java.util.Comparator;
 
 /**
  * This provides a scheduler algorithm that utilizes a CRT guessing
@@ -26,7 +25,7 @@ import java.util.Comparator;
  * 
  * @author Shannon S.
  */
-public class CRTGraphScheduler {
+public class CRTGraphScheduler extends ThreadScheduler {
 
   // <editor-fold desc="Private Members">
   // Current number of samples taken.
@@ -72,7 +71,7 @@ public class CRTGraphScheduler {
     // Will have to iterate until all threads are used up.
     Log.error("MUST ADD GRAPH!");
     
-    // Make the initial schedule 
+    // Make the initial schedule
     mySchedule = new Schedule(null);
     
     // Stamp the time.
@@ -103,7 +102,7 @@ public class CRTGraphScheduler {
     }
   
   // </editor-fold>
-
+  
   /**
    * Testing method that tests the behavior of making a first schedule guess.
    */
@@ -137,8 +136,16 @@ public class CRTGraphScheduler {
     
     }
   
+  /**
+   * 
+   */
+  @Override
+  public void run() {
+    
+    }
+  
   public static void main(String[] args) {
       testCRTGraphScheduler();
       }
-
+  
   }

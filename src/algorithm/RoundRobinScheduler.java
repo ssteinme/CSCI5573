@@ -2,10 +2,15 @@ package algorithm;
 
 import algorithm.prepare.ThreadScheduler;
 import core.io.Log;
+import javax.print.attribute.standard.DateTimeAtCompleted;
 import simulator.CPU;
 import simulator.Process;
 
 
+/**
+ * This is a perfect round robin that equally gives the thread to each CPU in turn.
+ * @author Shannon
+ */
 public class RoundRobinScheduler extends ThreadScheduler {
 
   private int myLastCPU = -1;
@@ -22,7 +27,7 @@ public class RoundRobinScheduler extends ThreadScheduler {
       
 			try {
 				idleCPU = getIdleCPU();
-				thread = getReadyThread();
+        thread = getReadyThread();
 				idleCPU.run(thread);
 			} catch (InterruptedException e) {
 				e.printStackTrace();

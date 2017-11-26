@@ -40,13 +40,10 @@ public class CRTGraphScheduler extends ThreadScheduler {
    * This is the method that generates a schedule.
    */
   private void makeSchedule() {
-    TimeSample[] cpuTimes;
-    TimeSample[] threadTimes;
     long st = System.currentTimeMillis();
     long et = 0;
     PerformanceTiming.CRT_GUESS_TIME = st;
     TimeSample[] threadSamples = ScheduleSampler.instance().getSamples(TimeSample.eSource.Thread);
-    TimeSample[] cores = ScheduleSampler.instance().getSamples(TimeSample.eSource.Core);
     
     long[] remain =  new long[threadSamples.length];
     long[] primes = new long[threadSamples.length];
@@ -117,7 +114,7 @@ public class CRTGraphScheduler extends ThreadScheduler {
           int t = ScheduleSampler.instance().mark(k, TimeSample.eSource.Core);
           int r = (int)(Math.random()*200);
           Thread.sleep(r);
-          ScheduleSampler.instance().expire(t);
+          ScheduleSampler.instance().expire(k,t);
           }
         
         Schedule sch = new CRTGraphScheduler().getSchedule();

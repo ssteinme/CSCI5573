@@ -1,0 +1,22 @@
+{
+   "nodes": {
+         "name": "A:1"
+         
+    },
+    "edges": [
+         {
+              "neighbors": [
+              "B:2",
+              "C:3"
+              ]
+         },
+         {
+              "edge_weight": [
+              "2",
+              "5"
+              ],
+              "destination": "C:3"
+              
+         }
+   ]
+}

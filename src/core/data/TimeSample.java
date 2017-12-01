@@ -23,9 +23,9 @@ public class TimeSample {
   
   // <editor-fold desc="Private Members">
   private long myStart;
-  private float myDur;
+  private double myDur;
   private eSource mySource;
-  private int myCID;
+  private long myCID;
   // </editor-fold>
   
   // <editor-fold desc="Constructors">
@@ -78,26 +78,26 @@ public class TimeSample {
   /**
    * Set the duration of the measurement (in milliseconds).
    */
-  public void setDuration(float v) { myDur = v; }
+  public void setDuration(double v) { myDur = v; }
   
   /**
    * Get the duration of the measurement (in milliseconds).
    */
-  public float getDuration() { return myDur ; }
+  public double getDuration() { return myDur ; }
   
   /**
    * Identifies which thread or CORE this came from.
    */
-  public int getTID() { return myCID; }
+  public long getTID() { return myCID; }
   
   /**
    * Set which thread or CORE this came from.
    */
-  public void setTID(int id){ myCID = id; }
+  public void setTID(long id){ myCID = id; }
   // </editor-fold>
 
   @Override
   public String toString() {
-    return "ID: " + getTID() + " T: " + getStart() + " D:" + getDuration() + " ns";
+    return "ID: " + getTID() + " S: " + getStart() + " D:" + getDuration() + " ns";
     }
   }

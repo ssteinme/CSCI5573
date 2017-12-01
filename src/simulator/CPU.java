@@ -1,82 +1,107 @@
 package simulator;
 
-import simulator.Thread;
+import algorithm.prepare.ScheduleSampler;
+import algorithm.prepare.ThreadScheduler;
+import core.data.TimeSample;
+import core.io.Log;
 
 public class CPU extends java.lang.Thread {
+
+  // <editor-fold desc="Private Members">
+
 	private int ID_ = -1;
 	private int quantum_ = 1;
-	private Thread currentThread_;
+	private Process currentThread_;
 	
-	private int accumulatativeBurstTime_ = 0;
+  private int accumulatativeBurstTime_ = 0;
 	private int burstTime_ = 0;
 	private ThreadScheduler scheduler_;
-	
+  // </editor-fold>
 	
 	public CPU(int id) {
 		ID_ = id;
 		currentThread_ = null;
-	}
-    public String toString() {
+    ScheduleSampler.instance().notify(id);
+  	}
+  
+  public String toString() {
     	String s = "";
     	s = s + ID_ + ", accumulative burst time: " + accumulatativeBurstTime_;
     	return s;    	
     }
-	public Thread getCurrentThread() {
+	
+  public Process getCurrentThread() {
 		return currentThread_;
 	}
-	public synchronized boolean isIdle() {
+	
+  public synchronized boolean isIdle() {
 		return (currentThread_ == null);
-	}
+    }
 	
 	public int getID() {
 		return ID_;
 	}
-	public synchronized Thread run(Thread aThread) {
-		Thread preemptedThread = preempt();
+  
+	public synchronized Process run(Process aThread) {
+		Process preemptedThread = preempt();
 		currentThread_ = null;
 		burstTime_ = 0;
-		aThread.setCPU(this);
+    
+    aThread.setCPU(this);
 		currentThread_ = aThread;
-		DataCollector.getInstance().CPUinUse(this);
-		//System.out.println("Running thread: " + aThread.toString());
+    
+    // Run whatever code the thing uses.
+    DataCollector.getInstance().CPUinUse(this);
+    
+    //  Execute the instructions.
+    if(aThread.isExecuting()) {
+      int m = ScheduleSampler.instance().mark(aThread.getID(),TimeSample.eSource.Thread);
+      aThread.getCode().executeNext();
+      ScheduleSampler.instance().expire(aThread.getID(), m);
+      }
+    
 		return preemptedThread;
-	}
+    }
 	
-	public synchronized Thread preempt() {
+	public synchronized Process preempt() {
+    
 		if (currentThread_ == null) {
 			return null;
-		}
+      }
+    
 		accumulatativeBurstTime_ += burstTime_;
 		currentThread_.addBurstTime(burstTime_);
 		currentThread_.setCPU(null);
 		DataCollector.getInstance().CPUidle(this);
-		Thread preemptedThread = currentThread_;
-		currentThread_ = null;		
+		Process preemptedThread = currentThread_;
+		currentThread_ = null;
 		this.scheduler_.cpuIdle(this);
-		//System.out.println("Preempted thread: " + preemptedThread.toString());
 		return preemptedThread;
 	}
 	
+  /**
+   * This is the java.Thread that runs CPU instruction code.
+   */
 	public void run() {
-		System.out.println(getName() + " started.");
-		while (true) {
-			while (isIdle());
-			try {
-				java.lang.Thread.sleep(1000);   // 1000 ms = 1s
-				synchronized(this) {  // TODO: synchronize this block
-					burstTime_ += 1;
-					if (burstTime_ == this.quantum_) {
-						Thread premptedThread = preempt();
-						if (premptedThread != null) {
-						    scheduler_.setToReady(premptedThread);	
-						}
-					}
-				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}  
+		
+    while (true) {
+      
+      int id = ScheduleSampler.instance().mark(ID_, TimeSample.eSource.Core);
+			while (isIdle()) ScheduleSampler.instance().extend(ID_,id);
+      ScheduleSampler.instance().expire(ID_, id);
+      
+      synchronized(this) {  // TODO: synchronize this block
+        burstTime_ += 1;
+        if (burstTime_ == this.quantum_) {
+          Process premptedThread = preempt();
+          if (premptedThread != null) {
+              scheduler_.submit(premptedThread);	
+          }
+        }
+      }
 		}
 	}
+  
 	public void setScheduler(ThreadScheduler scheduler) {
 		scheduler_ = scheduler;
 	}

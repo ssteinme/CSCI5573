@@ -4,7 +4,7 @@ package shortestPath;
 public class Vertex implements Comparable<Vertex> {
     private String name;
     public Edge[] neighbors;
-    double distance = Double.POSITIVE_INFINITY;
+    public double distance = Double.POSITIVE_INFINITY;
     public Vertex previous;
     public Vertex(String argName) { name = argName; }
     public String toString() {    	

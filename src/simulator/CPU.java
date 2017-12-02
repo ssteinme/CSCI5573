@@ -3,12 +3,11 @@ package simulator;
 import algorithm.prepare.ScheduleSampler;
 import algorithm.prepare.ThreadScheduler;
 import core.data.TimeSample;
-import core.io.Log;
 
 public class CPU extends java.lang.Thread {
 
   // <editor-fold desc="Private Members">
-
+  
 	private int ID_ = -1;
 	private int quantum_ = 1;
 	private Process currentThread_;
@@ -57,7 +56,7 @@ public class CPU extends java.lang.Thread {
     if(aThread.isExecuting()) {
       int m = ScheduleSampler.instance().mark(aThread.getID(),TimeSample.eSource.Thread);
       aThread.getCode().executeNext();
-      ScheduleSampler.instance().expire(aThread.getID(), m);
+      ScheduleSampler.instance().expire(m);
       }
     
 		return preemptedThread;
@@ -87,8 +86,8 @@ public class CPU extends java.lang.Thread {
     while (true) {
       
       int id = ScheduleSampler.instance().mark(ID_, TimeSample.eSource.Core);
-			while (isIdle()) ScheduleSampler.instance().extend(ID_,id);
-      ScheduleSampler.instance().expire(ID_, id);
+			while (isIdle()) ScheduleSampler.instance().extend(id);
+      ScheduleSampler.instance().expire(id);
       
       synchronized(this) {  // TODO: synchronize this block
         burstTime_ += 1;

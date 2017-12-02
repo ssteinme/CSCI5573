@@ -1,11 +1,12 @@
 package simulator;
 
+import algorithm.CRTGraphScheduler;
 import algorithm.prepare.ThreadScheduler;
 import java.util.Random;
 import java.util.Vector;
 
-import algorithm.RoundRobinScheduler;
 import algorithm.prepare.ScheduleSampler;
+import algorithm.tuning.SystemTuning;
 import core.io.Log;
 import simulator.event.*;
 import simulator.programs.SortingProgram;
@@ -22,7 +23,7 @@ import simulator.programs.SortingProgram;
 public class Computer extends java.lang.Thread {
 
   // <editor-fold desc="Private Members">
-  
+  private int myNCPUs = 0;
   private int myNextId = -1;
   private Class[] myAvailablePrograms;
   private int ID_ = (++myNextId);
@@ -34,7 +35,7 @@ public class Computer extends java.lang.Thread {
   
   // <editor-fold desc="Constructors">
   public Computer(int nCpus) {
-    this(nCpus,new RoundRobinScheduler(),new Class[] { SortingProgram.class });
+    this(nCpus,new CRTGraphScheduler(nCpus),new Class[] { SortingProgram.class });
     }
   
   /**
@@ -47,6 +48,7 @@ public class Computer extends java.lang.Thread {
    * @param programs A list of class names that implement {@link Code}.
    */
 	public Computer(int nCPUs, ThreadScheduler scheduler, Class[] programs) {
+    myNCPUs = nCPUs;
     myAvailablePrograms = programs;
 		scheduler_ = scheduler;
 		this.setName("Computer " + ID_);
@@ -69,25 +71,29 @@ public class Computer extends java.lang.Thread {
 	public synchronized void startApp() {
     
     try {
-      if (processes_.size() < Global.MAX_PROCESSES) {
+      if (processes_.size() < SystemTuning.MAX_THREADS_PER_CPU) {
         myNextThreadID = (myNextThreadID + 1) % (processes_.size()+1);
         
         // Get a random program.
         Code code = (Code)myAvailablePrograms[((int)(Math.random()*myAvailablePrograms.length)+1) % myAvailablePrograms.length].newInstance();
-        Log.info("Loading application \"" + code.getName() + "\" Program PID: " + myNextThreadID);
         Process p = new Process(myNextThreadID);
         p.setCode(code);
         processes_.add(p);
         scheduler_.submit(p);
         }
-      else
-        System.out.println(">>>>>>>>>>>>> At maximum allowable number of processes: " + Global.MAX_PROCESSES);			
       } 
     catch (Exception ex) {
       Log.error(ex);
       }
   	}
 	
+  /**
+   * Returns a full report of this computers current status.
+   */
+  public String getReport() {
+    return "Computer: " + getID() + " Threads: " + processes_.size() + " >> " + ScheduleSampler.instance().getReport();
+    }
+  
 	public synchronized void terminateApp() {
     
 		// Randomly pick a process to terminate
@@ -101,26 +107,32 @@ public class Computer extends java.lang.Thread {
 		scheduler_.unsubmit(p);
 		processes_.remove(p);
     p.terminate();
-		Log.info("Terminating application " + code.getName() + " PID: " + p.getID());
+//		Log.info("Terminating application " + code.getName() + " PID: " + p.getID());
     }
 	
 	public void run() {
-		System.out.println(getName() + " started CPUs: " + CPUs_.size());
+		System.out.println(getName() + " started CPUs: " + myNCPUs + " and " + SystemTuning.MAX_THREADS_PER_CPU + " threads");
+    long next = System.currentTimeMillis() + 5000;
     
-    long next = System.currentTimeMillis() + 1000;
+    for(int i=0;i<SystemTuning.MAX_THREADS_PER_CPU;i++) {
+      startApp();
+      Thread.yield();
+      }
     
 		while (true) {
-			Event event = EventSimulator.eventQueue.remove();
-			if (event instanceof StartApp) {
-				startApp();
-			} else if (event instanceof TerminateApp) {
-				terminateApp();
-        
+      Thread.yield();
+      
+//			Event event = EventSimulator.eventQueue.remove();
+//			if (event instanceof StartApp) {
+//				startApp();
+//			} else if (event instanceof TerminateApp) {
+//				terminateApp();
+//        
       if(System.currentTimeMillis() > next) {
-        Log.info("Computer: " + getID() + " " + ScheduleSampler.instance().getReport());
-        next = System.currentTimeMillis() + 1000;
+        Log.info(getReport());
+        next = System.currentTimeMillis() + 5000;
         }
-			}
+//			}
 		}
 	}
   // </editor-fold>

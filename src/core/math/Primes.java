@@ -5,11 +5,13 @@
  */
 package core.math;
 
+import core.data.TimeSample;
 import core.io.Log;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
@@ -102,57 +104,75 @@ public abstract class Primes {
   // </editor-fold>
   
   // <editor-fold desc="Utility Functions">
-
+  
+  /**
+   * Change all duration values to be the closest prime number.
+   */
+  public static void makeClosestPrime(TimeSample[] values) {
+    for(int i=0;i<values.length;i++) {
+      long v = (long)values[i].getDuration();
+      values[i].setDuration(closestBelow(v));
+      }
+    }
+  
   /**
    * Change all values to be the closest prime number.
    */
   public static void makeClosestPrime(long[] values) {
-    for(int i=0;i<values.length;i++) values[i] = closest(values[i]);
+    for(int i=0;i<values.length;i++) values[i] = closestBelow(values[i]);
     }
   
   /**
    * Change all values to be the closest prime number.
    */
   public static void makeClosestPrime(int[] values) {
-    for(int i=0;i<values.length;i++) values[i] = (int)closest(values[i]);
+    for(int i=0;i<values.length;i++) values[i] = (int)closestBelow(values[i]);
     }
   
   /**
-   * Return the closest prime number to the given value.
+   * Return the closest prime number the same or larger
+   * than p.
    */
-  public static long closest(long p) {
-    if(p < 0) throw new IllegalArgumentException("Prime numbers must be positive.");
+  public static long closestAbove(long p) {
+    if(p < 0) 
+      throw new IllegalArgumentException("Prime numbers must be positive.");
     if(p == 0) return 1;
     else if(isPrime(p)) return p;
     
+    long orgP = p;
+    p++;
+    
+    // Find the closest prime greater than the value.
+    for( ;p < Long.MAX_VALUE; p++) {
+      if(isPrime(p))
+        return p;
+      }
+    
+    throw new IllegalArgumentException("Can't find prime number above p=" + orgP);
+    }
+  
+  /**
+   * Return the closest prime number the same or smaller
+   * than p.
+   */
+  public static long closestBelow(long p) {
+    if(p < 0)
+      throw new IllegalArgumentException("Prime numbers must be positive.");
+    if(p == 0) return 1;
+    else if(isPrime(p)) 
+      return p;
+    
     long orgp = p;
+    p--;
     
     // Find the closest prime less than the value.
     for( ;p>=0;p--) {
       
-      if(isPrime(p)) {
-        long nextPrime = 0;
-        
-        // Get the index into the prime list for this prime.
-        int idx = ourPMIndex.get(p) + 1;
-        
-        if(idx < PRIMES.length)
-          nextPrime = PRIMES[idx];
-        // Brute force.
-        else {
-          nextPrime = PRIMES[PRIMES.length-1];
-          for( ;nextPrime < Long.MAX_VALUE;nextPrime++) {
-            if(isPrime(nextPrime))
-              break;
-            }
-          }
-        
-        p = (orgp - p < nextPrime - orgp)?p:nextPrime;
-        break;
-        }
+      if(isPrime(p))
+        return p;
       }
     
-    return p;
+    return 1;
     }
   
   /**
@@ -190,13 +210,42 @@ public abstract class Primes {
   public static long maxPrime() {
     return PRIMES[PRIMES.length-1];
     }
+  
+  /**
+   * Assuming three values move them all closest to the nearest prime without
+   * being equal to each other.
+   * @param p The samples to adjust
+   * @param sindex Starting index to adjust 3 samples.
+   */
+  public static void primeDistribute(TimeSample[] p, int sidx, int cnt) {
+    
+    TimeSample.sort(p, sidx, cnt);
+    
+    for(int i=sidx;i<sidx+cnt;i++) {
+      p[i].setDuration(closestBelow((long)p[i].getDuration()));
+      if(i-1 >= 0 && p[i].getDuration() <= p[i-1].getDuration())
+        p[i].setDuration(closestAbove((long)p[i-1].getDuration()+1));
+      }
+    }
+  
   // </editor-fold>
 
   public static void main(String[] args) {
     
     try {
-      PrintWriter pw = new PrintWriter(new FileWriter(new File("C:\\Workspace\\BiasSched\\core\\src\\core\\math\\primes.dat")));
-      pw.close();
+      TimeSample[] ts = new TimeSample[6];
+      ts[0] = new TimeSample(TimeSample.eSource.Core, 0, 0, 0);
+      ts[1] = new TimeSample(TimeSample.eSource.Core, 0, 15, 1);
+      ts[2] = new TimeSample(TimeSample.eSource.Core, 0, 20, 2);
+      ts[3] = new TimeSample(TimeSample.eSource.Core, 0, 3, 3);
+      ts[4] = new TimeSample(TimeSample.eSource.Core, 0, 6, 4);
+      ts[5] = new TimeSample(TimeSample.eSource.Core, 0, 18, 5);
+      primeDistribute(ts,0,3);
+      primeDistribute(ts,3,3);
+      
+      for(int i=0;i<ts.length;i++)
+        System.out.println("" + ts[i].getTID() + ":" + ts[i].getDuration());
+      
       } 
     catch (Exception ex) {
       Log.error(ex);

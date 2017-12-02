@@ -1,8 +1,10 @@
-package shortestPath;
+package core.shortestPath;
 
 
 public class Graph {
-	private Vertex nodes;
+
+    private Vertex nodes;
+  
     private Edge[] edges;
 
     public Vertex getvertexInfo() {

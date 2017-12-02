@@ -20,7 +20,7 @@ public class SystemTuning {
   public static final int NORMALIZATION_RANGE = 1000;
     
   /**
-   * This is the number of time saples to take before
+   * This is the number of time samples to take before
    * we create a new schedule and apply it.
    */
   public static final int RE_SCHEDULE_COUNT = 10000;
@@ -29,6 +29,6 @@ public class SystemTuning {
    * This is the maximum number of simultaneous timing samples
    * that can be taking place without dropping one.
    */
-  public static final int MAX_THREADS_PER_CPU = 25;
+  public static final int MAX_THREADS_PER_CPU = 15;
   
   }

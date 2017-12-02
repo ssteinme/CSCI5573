@@ -26,7 +26,7 @@ public class SortingProgram implements Code {
 
   // <editor-fold desc="Constructors">
   public SortingProgram() {
-    for(int i=0;i<100;i++) myArray.add("" + (int)Math.random()*100);
+    for(int i=0;i<500000;i++) myArray.add("" + (int)Math.random()*100);
     }
   // </editor-fold>
 

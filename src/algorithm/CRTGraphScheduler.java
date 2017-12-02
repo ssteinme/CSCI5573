@@ -64,7 +64,8 @@ public class CRTGraphScheduler extends ThreadScheduler {
         }
       }
     
-    Dijkstra.bellmanFord(vertices[0]);
+    // Dijkstra.bellmanFord(vertices[0]);
+    Dijkstra.computePossiblePaths(vertices[0]);
     
     List<Thread2CPU> tt = new ArrayList<>();
     for(int i=0;i<vertices.length;i++) {

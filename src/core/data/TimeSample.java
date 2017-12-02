@@ -1,5 +1,8 @@
 package core.data;
 
+import java.util.Arrays;
+import java.util.Comparator;
+
 /**
  * This is the main class that holds information about a sample
  * of processing time or idle time.
@@ -23,19 +26,21 @@ public class TimeSample {
   
   // <editor-fold desc="Private Members">
   private long myStart;
-  private double myDur;
+  private double myDurNS;
+  private double myDurMS;
   private eSource mySource;
   private long myCID;
   // </editor-fold>
   
   // <editor-fold desc="Constructors">
+  public TimeSample() {}
   
   /**
    * Copy constructor.
    */
   public TimeSample(TimeSample other) {
     myCID = other.myCID;
-    myDur = other.myDur;
+    myDurMS = other.myDurMS;
     mySource = other.mySource;
     myStart = other.myStart;
     } 
@@ -48,8 +53,9 @@ public class TimeSample {
    */
   public TimeSample(eSource source, long start, float dur, int tid) {
     mySource = source;
-    myDur = dur;
+    myDurMS = dur;
     myStart = start;
+    myCID = tid;
     }
   
   // </editor-fold>
@@ -76,14 +82,24 @@ public class TimeSample {
   public long getStart() { return myStart; }
   
   /**
+   * Set the duration of the measurement (in nanoseconds).
+   */
+  public void setDurationNS(double v) { myDurNS = v; }
+  
+  /**
+   * Get the duration of the measurement (in nanoseconds).
+   */
+  public double getDurationNS() { return myDurNS ; }
+  
+  /**
    * Set the duration of the measurement (in milliseconds).
    */
-  public void setDuration(double v) { myDur = v; }
+  public void setDuration(double v) { myDurMS = v; }
   
   /**
    * Get the duration of the measurement (in milliseconds).
    */
-  public double getDuration() { return myDur ; }
+  public double getDuration() { return myDurMS ; }
   
   /**
    * Identifies which thread or CORE this came from.
@@ -95,9 +111,45 @@ public class TimeSample {
    */
   public void setTID(long id){ myCID = id; }
   // </editor-fold>
-
+  
+  /**
+   * Sort the specified timesample array.
+   * @param ts Array.
+   * @param sidx Starting index to begin sort.
+   * @param cnt Count to sort starting from sidx.
+   */
+  public static void sort(TimeSample[] ts, int sidx, int cnt) {
+    
+    Arrays.sort(ts, sidx, sidx+cnt, new Comparator<TimeSample>() {
+      public int compare(TimeSample a, TimeSample b) {
+        if(a.getDuration() < b.getDuration())
+          return -1;
+        else if(a.getDuration() > b.getDuration())
+          return 1;
+        return 0;
+        }
+      }); 
+    }
+  
+  public static void report(TimeSample[] ts) {
+    System.out.println("----------- TS ------------");
+    for(TimeSample t : ts)
+      System.out.println("  >> " + t.toString());
+    }
+  
+  public static TimeSample largest(TimeSample[] ts) {
+    TimeSample largest = null;
+    
+    for(int i=0;i<ts.length;i++) {
+      if(largest == null || ts[i].getDuration() > largest.getDuration()) 
+        largest = ts[i];
+      }
+    
+    return largest;
+    }
+  
   @Override
   public String toString() {
-    return "ID: " + getTID() + " S: " + getStart() + " D:" + getDuration() + " ns";
+    return "ID: " + getTID() + " S: " + getStart() + " D:" + getDuration() + " ms";
     }
   }

@@ -1,4 +1,4 @@
-package wdag;
+package core.wdag;
 
 
 
@@ -14,9 +14,56 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 
-
 public class Dijkstra {
-	// Compute all of the paths / based off of the edges 
+    
+    /**
+     * Get all nodes via a depth search.
+     */
+    public static List<Vertex> DFS(Vertex root) {
+      HashMap<Vertex,Vertex> m = new HashMap<>();
+      DFS(root,m);
+      return new ArrayList<>(m.values());
+      }
+    
+    /**
+     * Depth search of the given graph root.
+     */
+    public static void DFS(Vertex root, HashMap<Vertex,Vertex> v) {
+      if(v.containsKey(root)) return;
+      if(root != null) v.put(root, root);
+      
+      for(int i=0;i<root.neighbors.size();i++)
+        DFS(root.neighbors.get(i).destination,v);
+      }
+    
+    private static void relax(Vertex v) {
+      
+      for(int i=0;i<v.neighbors.size();i++) {
+        Edge e = v.neighbors.get(i);
+        
+        // If the difference between the current edge and the vertex edge is
+        // smaller.
+        double diff = Math.abs(e.edge_weight - e.destination.currentMinDist);
+        
+        // Give that vertex this edge as the current path to it.
+        if(diff < e.destination.currentMinDist)
+          e.destination.bestEdge = e;
+        }
+      }
+    
+    /**
+     * Perform a bellman ford path optimization.
+     */
+    public static void bellmanFord(Vertex root) {
+      List<Vertex> v = DFS(root);
+      
+      for(int i=0;i<v.size();i++) {
+        for(int j=0;j<v.size();j++) 
+          relax(v.get(j));
+        }
+      } 
+      
+    // Compute all of the paths / based off of the edges 
     public static void computePossiblePaths(Vertex source) {
     		// The source vertex should always have a distance of 0
     		// Add the source vertex into a priority queue
@@ -24,7 +71,7 @@ public class Dijkstra {
         source.currentMinDist = 0.;
         PriorityQueue<Vertex> vQueue = new PriorityQueue<Vertex>();
         vQueue.add(source);
-
+        
         while (!vQueue.isEmpty()) {
         		// Arbitrary vertex = the head of the queue
             Vertex arbV = vQueue.poll();
@@ -47,6 +94,7 @@ public class Dijkstra {
                     vQueue.remove(v);
                     v.currentMinDist = totalDistance;
                     v.last = arbV;
+                    v.bestEdge = e;
                     vQueue.add(v);
                 }
 
@@ -184,10 +232,11 @@ public class Dijkstra {
     }
    
     public static void main(String args[]) throws Exception {
-    	
-        getPID();
-        postInfo();
+    	  // testIt();
+//        getPID();
+//        postInfo();
         
     } 
+    
     
 }

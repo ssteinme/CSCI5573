@@ -2,16 +2,13 @@ package algorithm.prepare;
 
 import core.data.TimeSample;
 import core.data.TimeSample.eSource;
-import core.math.Conversions;
 import core.math.ExtraMath;
-import core.io.Log;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.List;
 
 import algorithm.tuning.SystemTuning;
+import core.math.Conversions;
+import java.time.Duration;
 import java.util.Hashtable;
 
 /**
@@ -44,14 +41,19 @@ public class ScheduleSampler {
   // This is a moving list.
   private Object myMutex = new Object();
     
-  // Every element of this array will ALWAYS be non-null
-  // Elements should only be ignored if the start time is zero.
-  private Hashtable<Long,Marker[]> myMarkerMap = new Hashtable<>();
+  // This map is the Key to the marker which keeps track
+  // of a current time being taken by a process.
+  private Hashtable<Integer,TimeSample> myMarkerMap = new Hashtable<>();
+  
+  // This has the most recent list of times captured by processing.
+  private List<SnapStats> mySnapshot = new ArrayList<>();
+  
   private Hashtable<Long,Stats> myCPUStats = new Hashtable<>();
   private int myNextIndex = -1;
   
   // CPU average.
   private Stats myAllCPUStatus = new Stats(eSource.Core, -1);
+  
   // Thread average.
   private Stats myAllThreadStats = new Stats(eSource.Thread,-1);
     
@@ -75,69 +77,76 @@ public class ScheduleSampler {
    */
   private Stats getCPUStats(long cid) {
     Stats stats = myCPUStats.get(ourMutex);
-    if(stats == null) myCPUStats.put(cid, stats = new Stats(eSource.Core,cid));
+    if(stats == null) 
+      myCPUStats.put(cid, stats = new Stats(eSource.Core,cid));
     return stats;
-    }
-  
-  /**
-   * Given the CPU ID get the time markers for that CPU.
-   * (This should always be called in a synchorinzed block)
-   * @param id A thread or CPU id.
-   */
-  private Marker[] getTimeMarkers(long id) {
-    Marker[] m = myMarkerMap.get(id);
-    if(m == null) {
-      myMarkerMap.put(id,m = new Marker[SystemTuning.MAX_THREADS_PER_CPU]);
-      for(int i=0;i<m.length;i++) m[i] = new Marker();
-      }
-    return m;
     }
   
   /**
    * Call this when the timing action is complete or should be updated.
    * 
    * @param t The marker ID received from a call to {@link #mark()}.
-   * @param cid The thread or CPU id expiring the timer.
    * @param extend If true then the timer is not expired, but the duration is extended
    * to now.
    */
-  private void doExpire(long cid, int t, boolean extend) {
+  private void doExpire(int t, boolean extend) {
     long time = System.currentTimeMillis();
-    Marker ts;
-    TimeSample msg = null;
+    long nt = System.nanoTime();
+    TimeSample ts;
     
     synchronized(myMutex) {
       
       if(t == -1)
         return;
       
-      Marker[] myMarkers = getTimeMarkers(cid);
-      
-      ts = myMarkers[t];
+      ts = myMarkerMap.get(t);
+      if(ts == null) return;
       
       double dur = time - ts.getDuration();
       
-      msg = new TimeSample(ts);
-      msg.setDuration(dur);
+      if(dur == 0)
+        dur = (((double)nt) - ts.getDurationNS())*Conversions.NS_TO_MS;
       
-      if(!extend)
+      if(!extend) {
         ts.setDuration(dur);
+        
+        if(ts.getSource() != eSource.Core)
+          myMarkerMap.remove(t);
+        }
+      
+      // Find corresponding item in the snapshot if there.
+      SnapStats snap = null;
+      for(int i=0;i<mySnapshot.size();i++) {
+        SnapStats tss = mySnapshot.get(i);
+        if(tss.getTID() == ts.getTID() && tss.getSource() == ts.getSource()) {
+          snap = tss;
+          break;
+          }
+        }
+      
+      // Add to snapshot list if not there already.
+      if(snap == null) {
+        snap = new SnapStats(ts);
+        mySnapshot.add(snap);
+        }
+      
+      // Update snapshot data.
+      snap.DURATION_STATS.add(dur);
+      snap.setDuration(snap.DURATION_STATS.myAve);
+      
+      if(mySnapshot.size() >= SystemTuning.MAX_THREADS_PER_CPU && ts.getSource() == eSource.Thread)
+        mySnapshot.remove(0);
       
       switch(ts.getSource()) {
         case Core:
           myAllCPUStatus.add(dur);
-          getCPUStats(cid).add(dur);
+          getCPUStats(ts.getTID()).add(dur);
           break;
         case Thread:
           myAllThreadStats.add(dur);
           break;
           }
-       
-      if(!extend)
-        ts.setInUse(false);
       }
-    
-    fireSampleAdded(msg);
     }
      
   // </editor-fold>
@@ -159,9 +168,9 @@ public class ScheduleSampler {
    * Notify the sampler of the specified CPU id.
    */
   public void notify(long cid) {
-    expire(cid,mark(cid,eSource.Core));
+    expire(mark(cid,eSource.Core));
     }
-    
+  
   /**
    * Start a marker that begins counting the processing time.
    * This is called at the start of processing or idle.
@@ -175,27 +184,23 @@ public class ScheduleSampler {
   public int mark(long cid, eSource source) {
     
     synchronized(myMutex) {
-      Marker[] markers = getTimeMarkers(cid);
       long time = System.currentTimeMillis();
-      int i = 0;
-      Marker ts = null;
+      long nt = System.nanoTime();
       
-      for(i=0;i<markers.length;i++)
-        if(!markers[i].isInUse()) {
-          ts = markers[i];
-          break;
-          }
-      
-      if(ts == null)
+      if(source == eSource.Thread && myMarkerMap.size() >= SystemTuning.MAX_THREADS_PER_CPU)
         return -1;
       
-      ts.setInUse(true);
+      String id = "" + source + "" + cid;
+      
+      TimeSample ts = new TimeSample();
       ts.setTID(cid);
       ts.setSource(source);
       ts.setStart(time - myEpoch);
       ts.setDuration(time);
+      ts.setDurationNS(nt);
+      myMarkerMap.put(id.hashCode(),ts);
       
-      return i;
+      return id.hashCode();
       }
     }
   
@@ -205,8 +210,8 @@ public class ScheduleSampler {
    * @param t The marker ID received from a call to {@link #mark()}.
    * @param cid The thread or CPU id expiring the timer.
    */
-  public void extend(long cid, int t) {
-    doExpire(cid, t, true);
+  public void extend(int t) {
+    doExpire(t, true);
     }
 
   /**
@@ -214,8 +219,8 @@ public class ScheduleSampler {
    * @param t The marker ID received from a call to {@link #mark()}.
    * @param cid The thread or CPU id expiring the timer.
    */
-  public void expire(long cid, int t) {
-    doExpire(cid, t,false);
+  public void expire(int t) {
+    doExpire(t,false);
     }
   
   // </editor-fold>
@@ -223,25 +228,22 @@ public class ScheduleSampler {
   // <editor-fold desc="Properties">
   
   /**
-   * Capture the current set of time samples.
-   * @param The type of samples to retrieve.
+   * Get the current set of time samples.
    */
   public TimeSample[] getSamples(eSource src) {
     
     synchronized(myMutex) {
-      List<TimeSample> samps = new ArrayList<>();
+      List<TimeSample> rret = new ArrayList<>();
       
-      for(Object k : myMarkerMap.keySet()) {
-        Marker[] markers = myMarkerMap.get(k);
-        
-        for(int i=0;i<markers.length;i++) {
-          if(!markers[i].isInUse() && markers[i].getStart() != 0 && markers[i].getSource() == src)
-            samps.add(markers[i]);
-          }
+      for(int i=0;i<mySnapshot.size();i++) {
+        TimeSample ts = mySnapshot.get(i);
+        if(ts.getSource() == src)
+          rret.add(new TimeSample(ts));
         }
       
-      return samps.toArray(new TimeSample[samps.size()]);
+      return rret.toArray(new TimeSample[rret.size()]);
       }
+    
     }
   
   // </editor-fold>
@@ -259,66 +261,7 @@ public class ScheduleSampler {
     }
   // </editor-fold>
   
-  // <editor-fold desc="Events">
-  
-  /**
-   * Add a listener to be notified of new times.
-   */
-  public void addListener(SampleListener sl) {
-    synchronized(ourMutex) {
-      if(!myListeners.contains(sl))
-        myListeners.add(sl);
-      }
-    }
-  
-  /**
-   * Remove a listener from being notified of new times.
-   */
-  public void removeListener(SampleListener sl) {
-    synchronized(ourMutex) {
-      myListeners.remove(sl);
-      }
-    }
-    
-  /**
-   * Manually force the notification of a new time sample.
-   */
-  public void fireSampleAdded(TimeSample ts) {
-    synchronized(myListeners) {
-      for(int i=0;i<myListeners.size();i++) {
-        try {
-          myListeners.get(i).sampleAdded(ts);
-          }
-        catch(Exception ex) {
-          Log.error(ex);
-          }
-        
-        }
-      }
-    }
-  // </editor-fold>
-  
   // <editor-fold desc="Internal Class">
-   
-  /**
-   * This is an internal class used to keep track of 
-   * some additional information about a TimeSample.
-   */
-  class Marker extends TimeSample {
-  
-    // <editor-fold desc="Private Members">
-    private boolean myInUse = false;
-    // </editor-fold>
-    
-    public Marker() { super(eSource.Core,0,0,-1); }
-    public boolean isInUse() { return myInUse; }
-    public void setInUse(boolean v) { myInUse = v; }
-    
-    @Override
-    public String toString() {
-      return super.toString() + " U: " + isInUse();
-      }
-    }
   
   /**
    * Stats on the CPU.
@@ -351,11 +294,31 @@ public class ScheduleSampler {
       }
     
     public String toString() {
-      if(myID != -1)
-        return ((mySRC == eSource.Core)?"CPU ":"THR") + myID + " Ave Idle (ms): " + myAve + " (ms)";
-      else
-        return "Ave Idle (ms): " + myAve + " (ms)";
+      String id = (myID == -1)?"":"(" + myID + ")";
+      String tm = (myAve < 1)?myAve*1000 + "(ns)":myAve + " (ms)";
+      return ((mySRC == eSource.Core)?"CPU " + id + " Ave Idle ":"THR Ave Use ") + tm;
       }
+    }
+  
+  /**
+   * Used to hold a moving average of time samples for threads/CPUs.
+   */
+  class SnapStats extends TimeSample {
+    public Stats DURATION_STATS;
+    
+    public SnapStats(TimeSample ts) {
+      super(ts);
+      DURATION_STATS = new Stats(ts.getSource(), ts.getTID());
+      }
+    
+    public SnapStats(eSource src) { DURATION_STATS = new Stats(src,-1); }
+    
+    @Override
+    public void setTID(long id) {
+      super.setTID(id);
+      DURATION_STATS.myID = id;
+      }
+    
     }
   
   // </editor-fold>
@@ -366,8 +329,8 @@ public class ScheduleSampler {
    * Returns a report string that shows all current metrics.
    */
   public String getReport() {
-    String msg = "CPU " + myAllCPUStatus.toString() + " Thread " + myAllThreadStats.toString() + "\n";
-    for(Stats s : myCPUStats.values()) msg += "----" + s.toString() + "\n";
+    String msg = myAllCPUStatus.toString() + " " + myAllThreadStats.toString() + "\n";
+    for(Stats s : myCPUStats.values()) msg += "  >> " + s.toString() + "\n";
     return msg;
     }
   

@@ -10,10 +10,18 @@ import algorithm.prepare.ScheduleSampler;
 import algorithm.prepare.ThreadScheduler;
 import algorithm.tuning.PerformanceTiming;
 import core.data.Schedule;
+import core.data.Schedule.Thread2CPU;
 import core.data.TimeSample;
 import core.io.Log;
 import core.math.NumberTheory;
 import core.math.Primes;
+import simulator.CPU;
+import core.wdag.Dijkstra;
+import core.wdag.Edge;
+import core.wdag.Vertex;
+import java.util.ArrayList;
+import java.util.List;
+
 
 /**
  * This provides a scheduler algorithm that utilizes a CRT guessing
@@ -28,49 +36,78 @@ import core.math.Primes;
 public class CRTGraphScheduler extends ThreadScheduler {
 
   // <editor-fold desc="Private Members">
-  // Current number of samples taken.
-  private int myCount = 0;
   private Schedule mySchedule = null;
-  private boolean myNeedsSchedule = true;
   // </editor-fold>
   
   // <editor-fold desc="Private Util">
   
   /**
+   * Create a graph and optimize the association of thread to CPU.
+   */
+  private Thread2CPU[] graphOptimize(TimeSample[] threadDurations, TimeSample[] cpus) {
+    Vertex[] vertices  = new Vertex[cpus.length];
+    
+    for(int i=0;i<cpus.length;i++) {
+      vertices[i] = new Vertex("" + cpus[i].getTID());
+      vertices[i].currentMinDist = cpus[i].getDuration();
+      }
+    
+    int td = 0;
+    
+    // Make a K_n braph
+    for(int i=0;i<vertices.length;i++) {
+      for(int j=0;j<vertices.length;j++) {
+        if(i == j) continue;
+        Edge e = new Edge("" + threadDurations[td].getTID(), vertices[j],threadDurations[td].getDuration());
+        vertices[i].addEdge(e);
+        td = (td + 1) % threadDurations.length;
+        }
+      }
+    
+    Dijkstra.bellmanFord(vertices[0]);
+    
+    List<Thread2CPU> tt = new ArrayList<>();
+    for(int i=0;i<vertices.length;i++) {
+      if(vertices[i].bestEdge != null)
+        tt.add(new Thread2CPU(Integer.parseInt(vertices[i].name),Integer.parseInt(vertices[i].bestEdge.name)));
+      }
+    
+    // Dijkstra.computePossiblePaths(vertices[0]);
+    
+    return tt.toArray(new Thread2CPU[tt.size()]);
+    }
+    
+  /**
    * This is the method that generates a schedule.
    */
   private void makeSchedule() {
+    
+    // <editor-fold desc="Get Raw Time Sample Data">
     long st = System.currentTimeMillis();
     long et = 0;
     PerformanceTiming.CRT_GUESS_TIME = st;
     TimeSample[] threadSamples = ScheduleSampler.instance().getSamples(TimeSample.eSource.Thread);
+    TimeSample[] cpuSamples = ScheduleSampler.instance().getSamples(TimeSample.eSource.Core);
+    // </editor-fold>
     
-    long[] remain =  new long[threadSamples.length];
-    long[] primes = new long[threadSamples.length];
-    for(int i=0;i<threadSamples.length;i++) {
-      primes[i] = (long)threadSamples[i].getDuration();
-      if(primes[i] == 0) primes[i] = 1;
-      remain[i] = primes[i];
+    // <editor-fold desc="If we don't have enough data do Round Robin until we do.">
+    if(threadSamples.length < cpuSamples.length || cpuSamples.length < getCPUCount()) {
+      mySchedule = null;
+      return;
       }
+    // </editor-fold>
     
-    // Move everything to closest prime number.
-    Primes.makeClosestPrime(primes);
-    long x = NumberTheory.CRT(remain,primes);
+    // Spread CPU idle times to prime number distribution.
+    Primes.primeDistribute(cpuSamples,0,cpuSamples.length);
+    long x = NumberTheory.CRT(threadSamples, cpuSamples, 0, cpuSamples.length);
+    long largest = (long)TimeSample.largest(cpuSamples).getDuration();
+    for(int i=0;i<cpuSamples.length;i++) cpuSamples[i].setDuration(x*threadSamples[i].getDuration() % largest);
     
-    // Compute the new time slot for each process.
-    for(int i=0;i<threadSamples.length;i++) {
-      long s = Math.abs((x*primes[i]) % remain[i]);
-      threadSamples[i].setStart(s);
-      }
-    
-    // Use Crystin algorithm here.
-    // Connect the correct CPU to the thread here.
-    // Will have to iterate until all threads are used up.
-    Log.error("MUST ADD GRAPH!");
+    Thread2CPU[] sched = graphOptimize(threadSamples,cpuSamples);
     
     // Make the initial schedule
-    mySchedule = new Schedule(null);
-    
+    mySchedule = new Schedule(sched);
+        
     // Stamp the time.
     et = System.currentTimeMillis();
     PerformanceTiming.CRT_GUESS_TIME = et - st;
@@ -78,23 +115,18 @@ public class CRTGraphScheduler extends ThreadScheduler {
   
   // </editor-fold>
   
-  // <editor-fold desc="Private Constructors">
+  // <editor-fold desc=" Constructors">
   
   /**
    * Create the scheduler.
    */
-  public CRTGraphScheduler() {}
-  
-  // </editor-fold>
-    
-  // <editor-fold desc="Schedule Functions">
+  public CRTGraphScheduler(int nCpus) { super(nCpus); }
   
   /**
-   * Ask for the current system schedule.
+   * Force a creation of a new schedule and return it.
    */
   public Schedule getSchedule() {
-    if(myNeedsSchedule)
-      makeSchedule();
+    makeSchedule();
     return mySchedule;
     }
   
@@ -114,10 +146,10 @@ public class CRTGraphScheduler extends ThreadScheduler {
           int t = ScheduleSampler.instance().mark(k, TimeSample.eSource.Core);
           int r = (int)(Math.random()*200);
           Thread.sleep(r);
-          ScheduleSampler.instance().expire(k,t);
+          ScheduleSampler.instance().expire(t);
           }
         
-        Schedule sch = new CRTGraphScheduler().getSchedule();
+        Schedule sch = new CRTGraphScheduler(5).getSchedule();
         gt += PerformanceTiming.CRT_GUESS_TIME;
         System.out.println("----------------------------------------------------\n");
         System.out.println(sch.toCSVString());
@@ -133,12 +165,48 @@ public class CRTGraphScheduler extends ThreadScheduler {
     
     }
   
-  /**
-   * 
-   */
   @Override
   public void run() {
     
+    while(true) {
+      
+      try {
+        
+        if(mySchedule == null)
+          makeSchedule();
+        
+        if(mySchedule != null) {
+          Thread2CPU next = mySchedule.getNext();
+          
+          if(next == null) {
+            mySchedule = null;
+            continue;
+            }
+          
+          CPU cpu = getCPU(next.CPU);
+          simulator.Process thread = getThread(next.THREAD);
+          
+          if(cpu != null && thread != null)
+            cpu.run(thread);
+          }
+        // Round robin until enough data is available to
+        // make our schedule.
+        else {
+          CPU cpu = getIdleCPU();
+          simulator.Process p = getReadyThread();
+          
+          if(cpu != null && p != null)
+            cpu.run(p);
+          
+          Thread.yield();
+          }
+        
+        }
+      catch (Exception ex) {
+        Log.error(ex);
+        }
+        
+      }
     }
   
   public static void main(String[] args) {

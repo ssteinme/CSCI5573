@@ -1,4 +1,4 @@
-package wdag;
+package core.wdag;
 
 
 import java.io.FileWriter;

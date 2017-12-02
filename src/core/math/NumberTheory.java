@@ -5,6 +5,8 @@
  */
 package core.math;
 
+import core.data.TimeSample;
+
 /**
  * Provides a utility with various number theoretic
  * functions and utilities.
@@ -24,6 +26,8 @@ public abstract class NumberTheory {
   /// <returns>The inverse of val (mod m)</returns>
   public static long inverse(long x, long m) {
     
+    if(x == 1) return 1;
+    
     // Fermat's little theorem.
     if(Primes.isPrime(m) && x != m)
       return (long)Math.pow(x%m,m-2) % m;
@@ -41,22 +45,52 @@ public abstract class NumberTheory {
     }
   
   
-  /// <summary>
-  /// Compute the Chinese Remainder Theorem.
-  /// 
-  /// The CRT:
-  /// 
-  /// x = c1 (mod m1)
-  /// x = c2 (mod m2)
-  /// ...
-  /// x = cn (mod mn)
-  /// 
-  /// where:   (m1,m2,...mn) = 1
-  /// 
-  /// </summary>
-  /// <param name="m">The set of moduli each corresponding to its associated remainder in remainders</param>
-  /// <param name="c">The remainders for each linear congruence</param>
-  /// <returns>The value of x</returns>
+  /**
+   * Compute the Chinese Remainder Theorem.
+   * 
+   *  The CRT:
+   *  
+   *  x = c1 (mod m1)
+   *  x = c2 (mod m2)
+   *  ...
+   *  x = cn (mod mn)
+   *  
+   *  where:   (m1,m2,...mn) = 1
+   *  
+   * @param m The set of moduli each corresponding to its associated remainder in remainders
+   * @param c The remainders for each linear congruence
+   * @param cnt The number of items to use.
+   * @param s The starting index to use.
+   * @return The value of x
+   */ 
+  public static long CRT(TimeSample[] c, TimeSample[] m, int s, int cnt) {
+    long[] cc = new long[cnt];
+    long[] mm = new long[cnt];
+    
+    for(int i=0;i<cc.length;i++) {
+      cc[i] = (long)c[s + i].getDuration();
+      mm[i] = (long)m[s + i].getDuration();
+      }
+    
+    return CRT(cc,mm);
+    }
+  
+  /**
+   * Compute the Chinese Remainder Theorem.
+   * 
+   *  The CRT:
+   *  
+   *  x = c1 (mod m1)
+   *  x = c2 (mod m2)
+   *  ...
+   *  x = cn (mod mn)
+   *  
+   *  where:   (m1,m2,...mn) = 1
+   *  
+   * @param m The set of moduli each corresponding to its associated remainder in remainders
+   * @param c The remainders for each linear congruence
+   * @return The value of x
+   */ 
   public static long CRT(long[] c, long[] m) {
     long X = 0;
     long M = 1;

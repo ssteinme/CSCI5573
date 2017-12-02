@@ -31,6 +31,7 @@ public class EventSimulator extends java.lang.Thread {
 		List<Event> asList = new ArrayList<Event>(eventSet);
 		Random rand = new Random(System.currentTimeMillis());	
 		int noActivityPeriod = 0;
+    
 		while (true) {
 			try {
 				// Sleep until the next random event
@@ -43,7 +44,7 @@ public class EventSimulator extends java.lang.Thread {
 			Event event = asList.get(0);
 			// Add the generated event to eventQueue	
 			eventQueue.add(event);
-    		noActivityPeriod = rand.nextInt(Global.MAX_NO_ACTIVITY_PERIOD) + 1;   //in seconds
+      noActivityPeriod = rand.nextInt(Global.MAX_NO_ACTIVITY_PERIOD) + 1;   //in seconds
 		}
 	}
 }

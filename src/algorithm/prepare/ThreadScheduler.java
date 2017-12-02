@@ -1,6 +1,8 @@
 package algorithm.prepare;
 
+import core.data.Schedule.Thread2CPU;
 import core.io.Log;
+import java.util.Hashtable;
 import java.util.Vector;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -25,7 +27,6 @@ public abstract class ThreadScheduler extends java.lang.Thread {
   
 	protected int quantum_ = 1;
 	protected Queue<Process> readyQueue = new LinkedList<Process>();
-	protected Queue<Process> runningQueue = new LinkedList<Process>();
 	protected Vector<CPU> CPUs_ = new Vector<CPU>();
   // </editor-fold>
   
@@ -35,16 +36,24 @@ public abstract class ThreadScheduler extends java.lang.Thread {
   
 	private Lock cpusLock = new ReentrantLock();
 	private Condition cpuIdle = cpusLock.newCondition();     
+  private int myCPUCount;
+  
 	// </editor-fold>
   
   // <editor-fold desc="Constructors">
 
-	public ThreadScheduler() {
-	}
+	public ThreadScheduler(int nCPUs) {
+    myCPUCount = nCPUs;
+    }
+  
   // </editor-fold>
 	
   // <editor-fold desc="CPU/Thread Accessors">
 
+  public int getCPUCount() {
+    return CPUs_.size();
+    }
+  
   /**
    * Provide a list of all available CPU's to this scheduler.
    * @param aCPUs 
@@ -63,6 +72,27 @@ public abstract class ThreadScheduler extends java.lang.Thread {
 		}
 	}
 	
+  /**
+   * Get the specified thread by ID.
+   */
+  protected Process getThread(int id) throws InterruptedException {
+		readyQueueLock.lock();
+    
+		try {
+			while (readyQueue.isEmpty()) threadReady.await();
+      
+      for(Process p : readyQueue) {
+        if(p.getID() == id) 
+          return p;
+        }
+      
+      return null;
+      } 
+    finally {
+			readyQueueLock.unlock();
+      }
+    }
+  
   /**
    * Ask for the next thread waiting to do some work.
    */
@@ -102,12 +132,17 @@ public abstract class ThreadScheduler extends java.lang.Thread {
   public void unsubmit(Process thread) {
     readyQueueLock.lock();
 		
-    if (thread.isExecuting() && thread.getCPU() != null) {
-			thread.getCPU().preempt();
-		} else {
-			readyQueue.remove(thread);
-		}
-		readyQueueLock.unlock();
+    try {
+      if (thread.isExecuting() && thread.getCPU() != null) {
+        thread.getCPU().preempt();
+        } 
+      else {
+        readyQueue.remove(thread);
+        }
+      }
+    finally {
+  		readyQueueLock.unlock();
+      }
 	}
 	
   /**

@@ -19,7 +19,7 @@ public class TwoCoreBiasRoundRobinScheduler extends ThreadScheduler {
   private int myLastCPU = -1;
   private long myLastThreadID = -1;
     
-	public TwoCoreBiasRoundRobinScheduler() {}
+	public TwoCoreBiasRoundRobinScheduler(int nCpus) { super(nCpus); }
   
 	public void run() {
 		System.out.println(getName() + " started.");

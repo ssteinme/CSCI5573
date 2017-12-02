@@ -1,4 +1,4 @@
-package shortestPath;
+package core.shortestPath;
 
 
 public class Edge

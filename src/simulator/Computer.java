@@ -6,9 +6,10 @@ import java.util.Random;
 import java.util.Vector;
 
 import algorithm.prepare.ScheduleSampler;
+import algorithm.tuning.PerformanceTiming;
 import algorithm.tuning.SystemTuning;
+import core.io.JFile;
 import core.io.Log;
-import simulator.event.*;
 import simulator.programs.SortingProgram;
 
 /**
@@ -21,10 +22,14 @@ import simulator.programs.SortingProgram;
  * @author Tri
  */
 public class Computer extends java.lang.Thread {
-
+  
   // <editor-fold desc="Private Members">
+  private StringBuffer myResultsData;
+  private StringBuffer myPerformanceData;
+  
   private int myNCPUs = 0;
   private int myNextId = -1;
+  private int myNThreads = 0;
   private Class[] myAvailablePrograms;
   private int ID_ = (++myNextId);
 	private Vector<CPU> CPUs_;
@@ -34,8 +39,12 @@ public class Computer extends java.lang.Thread {
   // </editor-fold>
   
   // <editor-fold desc="Constructors">
-  public Computer(int nCpus) {
-    this(nCpus,new CRTGraphScheduler(nCpus),new Class[] { SortingProgram.class });
+  public Computer(int nCpus, int threads) {
+    this(nCpus, threads, new CRTGraphScheduler(nCpus),new Class[] { SortingProgram.class });
+    }
+
+  public Computer(int nCpus, int nThreads, ThreadScheduler sched) {
+    this(nCpus, nThreads, sched, new Class[] { SortingProgram.class });
     }
   
   /**
@@ -47,8 +56,9 @@ public class Computer extends java.lang.Thread {
    * should be "randomly" run on this computer.
    * @param programs A list of class names that implement {@link Code}.
    */
-	public Computer(int nCPUs, ThreadScheduler scheduler, Class[] programs) {
+	public Computer(int nCPUs, int nthreads, ThreadScheduler scheduler, Class[] programs) {
     myNCPUs = nCPUs;
+    myNThreads = nthreads;
     myAvailablePrograms = programs;
 		scheduler_ = scheduler;
 		this.setName("Computer " + ID_);
@@ -87,6 +97,28 @@ public class Computer extends java.lang.Thread {
       }
   	}
 	
+  public void logData() {
+    
+    // Log Tuning.
+    if(myPerformanceData == null)  myPerformanceData = new StringBuffer("Num CPUs, Algorithm Time (ms), CRT Time (ms), Graph Time (ms)\r\n");
+    myPerformanceData.append(myNCPUs + "," + PerformanceTiming.ALGORITHM_GUESS_TIME + "," + PerformanceTiming.CRT_TIME + "," + PerformanceTiming.GRAPH_TIME + "\r\n");
+    
+    if(myResultsData == null) myResultsData = new StringBuffer("Computer ID, Num Threads, CPU ID, Idle Time (ms)\r\n");
+    myResultsData.append(ScheduleSampler.instance().toCSVReport("" + getID() + "," + processes_.size()) + "\r\n");
+    
+    if(myPerformanceData.length() > 256) {
+      String fn = "perf_cpus-" + myNCPUs + "_threads-" + processes_.size() + "_" + scheduler_.getClass().getName() + ".csv";
+      new JFile("C:\\Users\\Shannon\\Documents\\Baseline_Trunk\\Documents\\School\\CSCI5573 - Operating Systems\\Homework\\Team Project\\" + fn).appendText(myPerformanceData.toString());
+      myPerformanceData = new StringBuffer();
+      }
+    
+    if(myResultsData.length() > 256) {
+      String fn = "idle_cpus-" + myNCPUs + "_threads-" + processes_.size() + "_" + scheduler_.getClass().getName() + ".csv";
+      new JFile("C:\\Users\\Shannon\\Documents\\Baseline_Trunk\\Documents\\School\\CSCI5573 - Operating Systems\\Homework\\Team Project\\" + fn).appendText(myResultsData.toString());
+      myResultsData = new StringBuffer();
+      }
+    }
+        
   /**
    * Returns a full report of this computers current status.
    */
@@ -103,38 +135,34 @@ public class Computer extends java.lang.Thread {
 		Random rand = new Random(System.currentTimeMillis());
 		int idx = rand.nextInt(processes_.size());
 		Process p = processes_.get(idx);
-    Code code = p.getCode();
 		scheduler_.unsubmit(p);
 		processes_.remove(p);
     p.terminate();
-//		Log.info("Terminating application " + code.getName() + " PID: " + p.getID());
     }
 	
 	public void run() {
-		System.out.println(getName() + " started CPUs: " + myNCPUs + " and " + SystemTuning.MAX_THREADS_PER_CPU + " threads");
+		System.out.println(getName() + " started CPUs: " + myNCPUs + " and " + myNThreads + " threads");
     long next = System.currentTimeMillis() + 5000;
     
-    for(int i=0;i<SystemTuning.MAX_THREADS_PER_CPU;i++) {
+    for(int i=0;i<myNThreads;i++) {
       startApp();
       Thread.yield();
       }
     
-		while (true) {
+		while (true && !Thread.currentThread().isInterrupted()) {
       Thread.yield();
       
-//			Event event = EventSimulator.eventQueue.remove();
-//			if (event instanceof StartApp) {
-//				startApp();
-//			} else if (event instanceof TerminateApp) {
-//				terminateApp();
-//        
       if(System.currentTimeMillis() > next) {
+        logData();
         Log.info(getReport());
         next = System.currentTimeMillis() + 5000;
         }
-//			}
-		}
-	}
+      }
+    
+    System.out.println(getName() +" shutdown.");
+    scheduler_.interrupt();
+    }
+  
   // </editor-fold>
   
   public int getID() { return ID_; }

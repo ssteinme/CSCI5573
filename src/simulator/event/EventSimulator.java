@@ -9,7 +9,8 @@ import simulator.*;
 public class EventSimulator extends java.lang.Thread {
 	public static EventQueue eventQueue = new EventQueue();
 	public static Set<Event> eventSet;   // Predefined event set
-	
+	private long myEnd = 0;
+  
 	static {
 		// We do quick, easy code here:  add 8 StartApp events and 2 TerminateApp event to make 
 		// a rate of 20% terminate app event.
@@ -22,9 +23,14 @@ public class EventSimulator extends java.lang.Thread {
 		}
 	}
 	
-	public EventSimulator() {
+  public EventSimulator() {
+    this(Long.MAX_VALUE);
+    }
+  
+	public EventSimulator(long maxTimeMs) {
 		this.setName("Event Simulator");
-	}
+    myEnd = System.currentTimeMillis() + maxTimeMs;
+    }
 	
 	public void run() {
 		System.out.println(getName() + " started.");
@@ -32,7 +38,7 @@ public class EventSimulator extends java.lang.Thread {
 		Random rand = new Random(System.currentTimeMillis());	
 		int noActivityPeriod = 0;
     
-		while (true) {
+		while (System.currentTimeMillis() < myEnd) {
 			try {
 				// Sleep until the next random event
 				java.lang.Thread.sleep(noActivityPeriod*1000);   // in milliseconds

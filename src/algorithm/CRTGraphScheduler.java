@@ -9,12 +9,14 @@ import algorithm.prepare.SampleListener;
 import algorithm.prepare.ScheduleSampler;
 import algorithm.prepare.ThreadScheduler;
 import algorithm.tuning.PerformanceTiming;
+import algorithm.tuning.SystemTuning;
 import core.data.Schedule;
 import core.data.Schedule.Thread2CPU;
 import core.data.TimeSample;
 import core.io.Log;
 import core.math.NumberTheory;
 import core.math.Primes;
+import core.math.TimeStamp;
 import simulator.CPU;
 import core.wdag.Dijkstra;
 import core.wdag.Edge;
@@ -43,11 +45,12 @@ public class CRTGraphScheduler extends ThreadScheduler {
   
   /**
    * Create a graph and optimize the association of thread to CPU.
+   * @param sz The number of CPU nodes to create.
    */
-  private Thread2CPU[] graphOptimize(TimeSample[] threadDurations, TimeSample[] cpus) {
-    Vertex[] vertices  = new Vertex[cpus.length];
+  private Thread2CPU[] graphOptimize(TimeSample[] threadDurations, TimeSample[] cpus, int sz) {
+    Vertex[] vertices  = new Vertex[sz];
     
-    for(int i=0;i<cpus.length;i++) {
+    for(int i=0;i<sz;i++) {
       vertices[i] = new Vertex("" + cpus[i].getTID());
       vertices[i].currentMinDist = cpus[i].getDuration();
       }
@@ -73,8 +76,6 @@ public class CRTGraphScheduler extends ThreadScheduler {
         tt.add(new Thread2CPU(Integer.parseInt(vertices[i].name),Integer.parseInt(vertices[i].bestEdge.name)));
       }
     
-    // Dijkstra.computePossiblePaths(vertices[0]);
-    
     return tt.toArray(new Thread2CPU[tt.size()]);
     }
     
@@ -84,34 +85,42 @@ public class CRTGraphScheduler extends ThreadScheduler {
   private void makeSchedule() {
     
     // <editor-fold desc="Get Raw Time Sample Data">
-    long st = System.currentTimeMillis();
-    long et = 0;
-    PerformanceTiming.CRT_GUESS_TIME = st;
+    TimeStamp time = TimeStamp.mark();
+    TimeStamp crtTime = TimeStamp.mark();
+    
     TimeSample[] threadSamples = ScheduleSampler.instance().getSamples(TimeSample.eSource.Thread);
     TimeSample[] cpuSamples = ScheduleSampler.instance().getSamples(TimeSample.eSource.Core);
     // </editor-fold>
     
     // <editor-fold desc="If we don't have enough data do Round Robin until we do.">
-    if(threadSamples.length < cpuSamples.length || cpuSamples.length < getCPUCount()) {
+    if(threadSamples.length < SystemTuning.MAX_THREADS_PER_CPU || cpuSamples.length < getCPUCount()) {
       mySchedule = null;
+      PerformanceTiming.ALGORITHM_GUESS_TIME = TimeStamp.expire(time);
+      PerformanceTiming.ALGORITHM_GUESS_TIME = TimeStamp.expire(crtTime);
+      PerformanceTiming.CRT_TIME = TimeStamp.expire(crtTime);
       return;
       }
     // </editor-fold>
-    
+        
     // Spread CPU idle times to prime number distribution.
-    Primes.primeDistribute(cpuSamples,0,cpuSamples.length);
-    long x = NumberTheory.CRT(threadSamples, cpuSamples, 0, cpuSamples.length);
+    int sz = (threadSamples.length > cpuSamples.length)?cpuSamples.length:threadSamples.length;
+    Primes.primeDistribute(cpuSamples,0,sz);
+    long x = NumberTheory.CRT(threadSamples, cpuSamples, 0, sz);
     long largest = (long)TimeSample.largest(cpuSamples).getDuration();
-    for(int i=0;i<cpuSamples.length;i++) cpuSamples[i].setDuration(x*threadSamples[i].getDuration() % largest);
+    for(int i=0;i<sz;i++) cpuSamples[i].setDuration(x*threadSamples[i].getDuration() % largest);
     
-    Thread2CPU[] sched = graphOptimize(threadSamples,cpuSamples);
+    PerformanceTiming.CRT_TIME = TimeStamp.expire(crtTime);
+    
+    TimeStamp graphTime = TimeStamp.mark();
+    Thread2CPU[] sched = graphOptimize(threadSamples,cpuSamples,sz);
+    PerformanceTiming.GRAPH_TIME = TimeStamp.expire(graphTime);
     
     // Make the initial schedule
     mySchedule = new Schedule(sched);
-        
+    
+    
     // Stamp the time.
-    et = System.currentTimeMillis();
-    PerformanceTiming.CRT_GUESS_TIME = et - st;
+    PerformanceTiming.ALGORITHM_GUESS_TIME = TimeStamp.expire(time);
     }
   
   // </editor-fold>
@@ -151,7 +160,7 @@ public class CRTGraphScheduler extends ThreadScheduler {
           }
         
         Schedule sch = new CRTGraphScheduler(5).getSchedule();
-        gt += PerformanceTiming.CRT_GUESS_TIME;
+        gt += PerformanceTiming.ALGORITHM_GUESS_TIME;
         System.out.println("----------------------------------------------------\n");
         System.out.println(sch.toCSVString());
         }
@@ -169,7 +178,7 @@ public class CRTGraphScheduler extends ThreadScheduler {
   @Override
   public void run() {
     
-    while(true) {
+    while(!Thread.currentThread().isInterrupted()) {
       
       try {
         

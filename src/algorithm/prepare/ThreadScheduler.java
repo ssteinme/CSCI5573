@@ -65,7 +65,8 @@ public abstract class ThreadScheduler extends java.lang.Thread {
 	public void cpuIdle(CPU cpu) {
 		cpusLock.lock();
 		try {
-			CPUs_.addElement(cpu);
+      if(!CPUs_.contains(cpu))
+        CPUs_.addElement(cpu);
 			cpuIdle.signal();
 		} finally {
 			cpusLock.unlock();

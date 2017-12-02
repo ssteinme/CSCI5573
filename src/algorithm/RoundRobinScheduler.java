@@ -1,7 +1,9 @@
 package algorithm;
 
 import algorithm.prepare.ThreadScheduler;
+import algorithm.tuning.PerformanceTiming;
 import core.io.Log;
+import core.math.TimeStamp;
 import javax.print.attribute.standard.DateTimeAtCompleted;
 import simulator.CPU;
 import simulator.Process;
@@ -21,15 +23,18 @@ public class RoundRobinScheduler extends ThreadScheduler {
 	public void run() {
 		System.out.println(getName() + " started.");
      
-		while (true) {
+		while (!Thread.currentThread().isInterrupted()) {
 			CPU idleCPU = null;
 			Process thread = null;
       
 			try {
-				idleCPU = getIdleCPU();
+        TimeStamp ts = TimeStamp.mark();
+        idleCPU = getIdleCPU();
         thread = getReadyThread();
+        PerformanceTiming.ALGORITHM_GUESS_TIME = TimeStamp.expire(ts);
 				idleCPU.run(thread);
-			} catch (InterruptedException e) {
+        } 
+      catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}		

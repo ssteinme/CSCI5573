@@ -30,7 +30,7 @@ public class TwoCoreBiasRoundRobinScheduler extends ThreadScheduler {
     
     long nxt = System.currentTimeMillis() + 5000;
     
-		while (true) {
+		while (!Thread.currentThread().isInterrupted()) {
 			CPU idleCPU = null;
 			simulator.Process thread = null;
       

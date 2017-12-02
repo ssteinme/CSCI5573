@@ -72,6 +72,14 @@ public class ScheduleSampler {
   // <editor-fold desc="Private Util">
   
   /**
+   * Get the number of CPU's we currently know about.
+   */
+  private int getCPUCount() {
+    if(myCPUStats.size() == 0) return 1;
+    return myCPUStats.size();
+    }
+  
+  /**
    * Get the statistics for a CPU.
    * @param cid a CPU id.
    */
@@ -134,7 +142,7 @@ public class ScheduleSampler {
       snap.DURATION_STATS.add(dur);
       snap.setDuration(snap.DURATION_STATS.myAve);
       
-      if(mySnapshot.size() >= SystemTuning.MAX_THREADS_PER_CPU && ts.getSource() == eSource.Thread)
+      if(mySnapshot.size() >= getCPUCount()*SystemTuning.MAX_THREADS_PER_CPU && ts.getSource() == eSource.Thread)
         mySnapshot.remove(0);
       
       switch(ts.getSource()) {
@@ -187,7 +195,7 @@ public class ScheduleSampler {
       long time = System.currentTimeMillis();
       long nt = System.nanoTime();
       
-      if(source == eSource.Thread && myMarkerMap.size() >= SystemTuning.MAX_THREADS_PER_CPU)
+      if(source == eSource.Thread && myMarkerMap.size() >=  getCPUCount()*SystemTuning.MAX_THREADS_PER_CPU)
         return -1;
       
       String id = "" + source + "" + cid;
@@ -334,11 +342,37 @@ public class ScheduleSampler {
     return msg;
     }
   
+  /**
+   * Returns a CSV that
+   * CPU ID, Idle Time
+   */
+  public String toCSVReport(String prepend) {
+    StringBuffer sb = new StringBuffer();
+    
+    List<Stats> stats = new ArrayList<>(myCPUStats.values());
+    for(int i=0;i<myCPUStats.size();i++) {
+      Stats s = stats.get(i);
+      sb.append(prepend + "," + s.myID + "," + s.myAve);
+      if(i != myCPUStats.size()-1)
+        sb.append("\r\n");
+      }
+      
+    return sb.toString();
+    }
+  
+  /**
+   * Returns a CSV that
+   * CPU ID, Idle Time
+   */
+  public String toCSVReport() {
+    return toCSVReport("");
+    }
+    
   @Override
   public String toString() { return getReport(); }
   
   // </editor-fold>
-
+  
   public static void main(String[] args) {
         
     }

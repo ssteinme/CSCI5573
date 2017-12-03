@@ -2,6 +2,8 @@ package simulator;
 
 import algorithm.CRTGraphScheduler;
 import algorithm.prepare.ThreadScheduler;
+
+import java.io.File;
 import java.util.Random;
 import java.util.Vector;
 
@@ -98,7 +100,7 @@ public class Computer extends java.lang.Thread {
   	}
 	
   public void logData() {
-    
+    String logDir = System.getProperty("user.dir");
     // Log Tuning.
     if(myPerformanceData == null)  myPerformanceData = new StringBuffer("Num CPUs, Algorithm Time (ms), CRT Time (ms), Graph Time (ms)\r\n");
     myPerformanceData.append(myNCPUs + "," + PerformanceTiming.ALGORITHM_GUESS_TIME + "," + PerformanceTiming.CRT_TIME + "," + PerformanceTiming.GRAPH_TIME + "\r\n");
@@ -108,13 +110,13 @@ public class Computer extends java.lang.Thread {
     
     if(myPerformanceData.length() > 256) {
       String fn = "perf_cpus-" + myNCPUs + "_threads-" + processes_.size() + "_" + scheduler_.getClass().getName() + ".csv";
-      new JFile("C:\\Users\\Shannon\\Documents\\Baseline_Trunk\\Documents\\School\\CSCI5573 - Operating Systems\\Homework\\Team Project\\" + fn).appendText(myPerformanceData.toString());
+      new JFile(logDir + File.separator + fn).appendText(myPerformanceData.toString());
       myPerformanceData = new StringBuffer();
       }
     
     if(myResultsData.length() > 256) {
       String fn = "idle_cpus-" + myNCPUs + "_threads-" + processes_.size() + "_" + scheduler_.getClass().getName() + ".csv";
-      new JFile("C:\\Users\\Shannon\\Documents\\Baseline_Trunk\\Documents\\School\\CSCI5573 - Operating Systems\\Homework\\Team Project\\" + fn).appendText(myResultsData.toString());
+      new JFile(logDir + File.separator + fn).appendText(myResultsData.toString());
       myResultsData = new StringBuffer();
       }
     }
